@@ -65,4 +65,5 @@ export function hasRole(user: User | null, roles: string[]) {
 
 export const SOC_ROLES = ['Platform Admin', 'SOC Manager', 'SOC Analyst'];
 export const MANAGER_ROLES = ['Platform Admin', 'SOC Manager'];
+export const ADMIN_SETUP_ROLES = ['Platform Admin', 'SOC Manager'];
 export const CLIENT_ROLES = ['Client Admin', 'Client Viewer'];

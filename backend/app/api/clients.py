@@ -28,8 +28,15 @@ def create_client(
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
 ):
-    client = Client(organization_id=user.organization_id, **payload.model_dump())
+    data = payload.model_dump()
+    apply_default_sla = data.pop("apply_default_sla", True)
+    client = Client(organization_id=user.organization_id, **data)
     db.add(client)
+    db.flush()
+    if apply_default_sla:
+        from app.services.admin_service import AdminService
+
+        AdminService(db).apply_default_sla_policies(client.id, user.organization_id)
     db.commit()
     db.refresh(client)
     return client

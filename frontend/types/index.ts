@@ -175,6 +175,26 @@ export interface TrustMetrics {
   qa_review_count: number;
 }
 
+export interface AdminOverview {
+  organization_id: string;
+  organization_name: string;
+  deployment_mode: string;
+  client_count: number;
+  user_count: number;
+  sla_policy_count: number;
+  case_count: number;
+  clients_without_sla: Array<{ id: string; name: string }>;
+  clients_without_portal_users: Array<{ id: string; name: string }>;
+  checklist: {
+    has_clients: boolean;
+    all_clients_have_sla: boolean;
+    has_soc_users: boolean;
+    all_clients_have_portal_users: boolean;
+    has_cases: boolean;
+    setup_complete: boolean;
+  };
+}
+
 export interface SLAPolicy {
   id: string;
   client_id: string;

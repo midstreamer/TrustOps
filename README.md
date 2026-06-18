@@ -97,6 +97,16 @@ python scripts/pilot_setup.py demo-case --client "Apex Energy"
 
 Sample Sentinel payload: [samples/sentinel-alert-payload.json](samples/sentinel-alert-payload.json)
 
+## Admin Setup UI
+
+Platform Admins and SOC Managers can onboard managed clients at **Admin Setup** (`/app/admin/setup`):
+
+- **Overview** — setup checklist for multi-client MDR operations
+- **Clients** — add managed clients with default SLA templates; copy `client_id` for integrations
+- **Users** — create provider and client portal users (Platform Admin only)
+- **SLA Policies** — apply default Critical/High templates per client
+- **Sample Data** — generate demo cases or import sample CSV alerts
+
 ## Tests & Validation
 
 ```bash

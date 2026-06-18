@@ -81,9 +81,9 @@ export function ReportContent({
 
       <Section title="Notable Cases">
         <p className={`mb-2 ${variant === 'print' ? 'text-gray-600' : 'text-sm text-muted'}`}>{(notable as { summary?: string }).summary}</p>
-        <ul className={`list-inside list-disc ${textClass}`}>
+        <ul className={`list-disc space-y-1 pl-5 ${textClass}`}>
           {notableItems.map((item, i) => (
-            <li key={i}>{item.title}{item.severity ? ` (${item.severity})` : ''}</li>
+            <li key={i} className="pl-1">{item.title}{item.severity ? ` (${item.severity})` : ''}</li>
           ))}
         </ul>
       </Section>
@@ -119,14 +119,14 @@ export function ReportContent({
       )}
 
       <Section title="Recurring Risk Themes">
-        <ul className={`list-inside list-disc ${textClass}`}>
-          {((themes as { items?: string[] }).items || []).map((t, i) => <li key={i}>{t}</li>)}
+        <ul className={`list-disc space-y-1 pl-5 ${textClass}`}>
+          {((themes as { items?: string[] }).items || []).map((t, i) => <li key={i} className="pl-1">{t}</li>)}
         </ul>
       </Section>
 
       <Section title="Recommended Actions">
-        <ul className={`list-inside list-disc ${textClass}`}>
-          {actions.map((r, i) => <li key={i}>{r}</li>)}
+        <ul className={`list-disc space-y-1 pl-5 ${textClass}`}>
+          {actions.map((r, i) => <li key={i} className="pl-1">{r}</li>)}
         </ul>
       </Section>
 
@@ -135,8 +135,8 @@ export function ReportContent({
       </Section>
 
       <Section title="Next Month Focus">
-        <ul className={`list-inside list-disc ${textClass}`}>
-          {nextFocus.map((r, i) => <li key={i}>{r}</li>)}
+        <ul className={`list-disc space-y-1 pl-5 ${textClass}`}>
+          {nextFocus.map((r, i) => <li key={i} className="pl-1">{r}</li>)}
         </ul>
       </Section>
     </>

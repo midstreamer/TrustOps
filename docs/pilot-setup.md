@@ -30,6 +30,8 @@ Creates organization and all RBAC roles.
 
 ## Step 3: Create Clients
 
+Use **Admin Setup** in the UI (`/app/admin/setup` as Platform Admin or SOC Manager), or the CLI:
+
 ```bash
 python scripts/pilot_setup.py add-client \
   --org "Acme MDR" \

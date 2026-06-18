@@ -68,6 +68,7 @@ class ClientCreate(BaseModel):
     timezone: str = "UTC"
     primary_contact_name: str | None = None
     primary_contact_email: str | None = None
+    apply_default_sla: bool = True
 
 
 class ClientUpdate(BaseModel):

@@ -353,7 +353,7 @@ export default function CaseDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase text-muted">Key Evidence</div>
-                  <ul className="mt-1 list-inside list-disc">{(latestAI.key_evidence_json?.items || []).map((k, i) => <li key={i}>{k}</li>)}</ul>
+                  <ul className="mt-1 list-disc space-y-1 pl-5">{(latestAI.key_evidence_json?.items || []).map((k, i) => <li key={i} className="pl-1">{k}</li>)}</ul>
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase text-muted">Rationale</div>
@@ -361,7 +361,7 @@ export default function CaseDetailPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase text-muted">Suggested Next Steps</div>
-                  <ul className="mt-1 list-inside list-disc">{(latestAI.suggested_next_steps_json?.items || []).map((s, i) => <li key={i}>{s}</li>)}</ul>
+                  <ul className="mt-1 list-disc space-y-1 pl-5">{(latestAI.suggested_next_steps_json?.items || []).map((s, i) => <li key={i} className="pl-1">{s}</li>)}</ul>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-muted">MITRE Tactics</span><div>{(latestAI.mitre_tactics_json?.items || []).join(', ') || '—'}</div></div>

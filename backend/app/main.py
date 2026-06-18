@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api import ai_decisions, auth, cases, clients, dashboards, evidence, imports, integrations, notes, qa_reports, sla, users
+from app.api import admin, ai_decisions, auth, cases, clients, dashboards, evidence, imports, integrations, notes, qa_reports, sla, users
 from app.core.config import settings
 from app.db.session import get_db
 
@@ -26,6 +26,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(clients.router)
 app.include_router(users.router)
 app.include_router(cases.router)
