@@ -8,16 +8,22 @@ import { useAuth, hasRole, MANAGER_ROLES } from '@/hooks/useAuth';
 import type { Report, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { LoadingState, EmptyState } from '@/components/ui/states';
+
 import { Plus } from 'lucide-react';
 
 export default function ReportsPage() {
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const isManager = hasRole(user, MANAGER_ROLES);
 
   useEffect(() => {
-    api<Report[]>('/reports').then(setReports).catch(console.error);
+    api<Report[]>('/reports')
+      .then(setReports)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -30,6 +36,9 @@ export default function ReportsPage() {
           </Link>
         )}
       </div>
+      {loading ? (
+        <LoadingState message="Loading reports..." />
+      ) : (
       <div className="space-y-3">
         {reports.map((r) => (
           <div key={r.id} className="cursor-pointer rounded-xl border border-border bg-card p-4 hover:border-primary/50" onClick={() => router.push(`/app/reports/${r.id}`)}>
@@ -44,8 +53,9 @@ export default function ReportsPage() {
             </div>
           </div>
         ))}
-        {reports.length === 0 && <p className="text-muted">No reports yet</p>}
+        {reports.length === 0 && <EmptyState title="No reports yet" description={isManager ? 'Generate a monthly report for a client.' : 'Published reports will appear here.'} />}
       </div>
+      )}
     </div>
   );
 }

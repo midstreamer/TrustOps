@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Card, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LoadingState, ErrorState } from '@/components/ui/states';
 
 const COLORS = ['#1d9bf0', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
 
@@ -19,8 +20,8 @@ export default function ManagerDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-muted">Loading dashboard...</div>;
-  if (error) return <div className="rounded-lg border border-red-900/50 bg-red-900/20 p-4 text-red-300">{error}</div>;
+  if (loading) return <LoadingState message="Loading manager dashboard..." />;
+  if (error) return <ErrorState message={error} />;
   if (!metrics) return null;
 
   const priorityData = Object.entries((metrics.cases_by_priority as Record<string, number>) || {}).map(([name, value]) => ({ name, value }));

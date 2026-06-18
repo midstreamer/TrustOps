@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = ""
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
+    webhook_api_key: str = "dev-webhook-key-change-in-production"
 
     class Config:
         env_file = ".env"

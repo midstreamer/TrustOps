@@ -56,10 +56,15 @@ def main() -> int:
     cases = api("GET", "/cases", analyst_token).json()
     check("Case queue returns cases", len(cases) >= 12, f"got {len(cases)}")
 
-    # Pick a New case for full workflow
-    target = next((c for c in cases if c["status"] == "New"), cases[0])
+    # Pick golden path case or New case for full workflow
+    golden = next((c for c in cases if c.get("case_number") == "CASE-GOLDEN"), None)
+    target = golden or next((c for c in cases if c["status"] == "New"), cases[0])
     case_id = target["id"]
+    check("Golden path case (CASE-GOLDEN) exists", golden is not None or target["status"] == "New")
     check("Open case (GET detail)", api("GET", f"/cases/{case_id}", analyst_token).status_code == 200)
+
+    # Use golden case for workflow when available (no prior AI/decision)
+    workflow_case_id = golden["id"] if golden else None
 
     # 3: Create case
     clients = api("GET", "/clients", analyst_token).json()
@@ -80,7 +85,8 @@ def main() -> int:
     )
     check("Create case", create_r.status_code == 200, create_r.text[:200])
     new_case = create_r.json() if create_r.status_code == 200 else {}
-    workflow_case_id = new_case.get("id", case_id)
+    if not workflow_case_id:
+        workflow_case_id = new_case.get("id", case_id)
 
     # 4-5: AI recommendation
     ai_r = api("POST", f"/cases/{workflow_case_id}/ai-recommendations", analyst_token)
@@ -138,6 +144,39 @@ def main() -> int:
     if dash.status_code == 200:
         d = dash.json()
         check("Dashboard has open cases metric", "total_open_cases" in d)
+
+    # Trust metrics
+    tm = api("GET", "/dashboards/trust-metrics", mgr_token)
+    check("Trust metrics dashboard", tm.status_code == 200, tm.text[:200])
+    if tm.status_code == 200:
+        t = tm.json()
+        check("Trust metrics has AI counts", "ai_recommendation_count" in t)
+        check("Trust metrics has agreement rate", "human_ai_agreement_rate" in t)
+
+    # Webhook alert ingestion
+    print("\n[Webhook ingestion]")
+    webhook_key = os.environ.get("WEBHOOK_API_KEY", "dev-webhook-key-change-in-production")
+    wh_r = httpx.post(
+        f"{BASE}/integrations/webhook/alerts",
+        headers={"X-TrustOps-Webhook-Key": webhook_key, "Content-Type": "application/json"},
+        json={
+            "client_id": apex["id"],
+            "title": "Webhook validation alert",
+            "severity": "High",
+            "source_system": "Demo SOAR",
+            "description": "Created during demo validation",
+            "priority": "P2 High",
+        },
+        timeout=30,
+    )
+    check("Webhook creates case", wh_r.status_code == 200, wh_r.text[:200])
+    wh_bad = httpx.post(
+        f"{BASE}/integrations/webhook/alerts",
+        headers={"X-TrustOps-Webhook-Key": webhook_key, "Content-Type": "application/json"},
+        json={"client_id": "00000000-0000-0000-0000-000000000099", "title": "x", "severity": "High"},
+        timeout=30,
+    )
+    check("Webhook rejects invalid client", wh_bad.status_code in (400, 404), str(wh_bad.status_code))
 
     qa_r = api(
         "POST",

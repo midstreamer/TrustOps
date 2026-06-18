@@ -53,6 +53,19 @@ class CaseService:
             self.db.add(alert)
 
         self.add_event(case.id, "Case Created", f"Case {case.case_number} created", created_by)
+        if created_by:
+            from app.services.audit_service import AuditLogService
+
+            AuditLogService.log(
+                self.db,
+                event_type="case_created",
+                user=created_by,
+                client_id=client_id,
+                case_id=case.id,
+                entity_type="case",
+                entity_id=case.id,
+                new_value={"case_number": case.case_number, "title": title, "severity": severity},
+            )
         return case
 
     def update_case(self, case: Case, **fields: Any) -> Case:
@@ -96,7 +109,7 @@ class CaseService:
         return (
             self.db.query(CaseEvent)
             .filter(CaseEvent.case_id == case_id)
-            .order_by(CaseEvent.created_at.desc())
+            .order_by(CaseEvent.created_at.asc())
             .all()
         )
 

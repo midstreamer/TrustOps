@@ -383,3 +383,28 @@ class ImportPreviewResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WebhookAlertPayload(BaseModel):
+    client_id: UUID
+    title: str
+    severity: str
+    description: str | None = None
+    source_system: str | None = None
+    source_alert_id: str | None = None
+    priority: str | None = None
+    asset_name: str | None = None
+    username: str | None = None
+    source_ip: str | None = None
+    destination_ip: str | None = None
+    mitre_tactic: str | None = None
+    mitre_technique: str | None = None
+    raw_event: str | None = None
+    detected_at: datetime | None = None
+
+
+class WebhookAlertResponse(BaseModel):
+    case_id: str
+    case_number: str
+    client_id: str
+    status: str

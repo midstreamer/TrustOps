@@ -8,7 +8,8 @@ import type { Case, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Badge, severityVariant, slaVariant } from '@/components/ui/card';
+import { SeverityBadge, SlaBadge, AiConfidenceBadge } from '@/components/ui/badges';
+import { LoadingState, EmptyState, ErrorState } from '@/components/ui/states';
 import { SEVERITIES, PRIORITIES, STATUSES } from '@/lib/utils';
 import { Plus, Upload, Search } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function CasesPage() {
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     client_id: '', severity: '', priority: '', status: '',
     assigned_to_me: false, sla_at_risk: false, sla_breached: false, search: '',
@@ -24,6 +26,7 @@ export default function CasesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const params = new URLSearchParams();
       if (filters.client_id) params.set('client_id', filters.client_id);
@@ -41,7 +44,7 @@ export default function CasesPage() {
       setCases(casesData);
       setClients(clientsData);
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : 'Failed to load cases');
     } finally {
       setLoading(false);
     }
@@ -117,6 +120,8 @@ export default function CasesPage() {
         </div>
       </div>
 
+      {error && <ErrorState message={error} />}
+
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-card">
@@ -128,20 +133,20 @@ export default function CasesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-muted">Loading...</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8"><LoadingState message="Loading case queue..." /></td></tr>
             ) : cases.length === 0 ? (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-muted">No cases found</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8"><EmptyState title="No cases found" description="Adjust filters or create a new case." /></td></tr>
             ) : cases.map((c) => (
               <tr key={c.id} className="border-b border-border hover:bg-card/50 cursor-pointer" onClick={() => router.push(`/app/cases/${c.id}`)}>
                 <td className="px-4 py-3 font-mono text-primary">{c.case_number}</td>
                 <td className="px-4 py-3">{c.client_name}</td>
                 <td className="px-4 py-3 max-w-xs truncate">{c.title}</td>
-                <td className="px-4 py-3"><Badge variant={severityVariant(c.severity)}>{c.severity}</Badge></td>
+                <td className="px-4 py-3"><SeverityBadge severity={c.severity} /></td>
                 <td className="px-4 py-3">{c.priority || '—'}</td>
                 <td className="px-4 py-3">{c.status}</td>
                 <td className="px-4 py-3">{c.assigned_to_name || '—'}</td>
-                <td className="px-4 py-3"><Badge variant={slaVariant(c.sla_status)}>{c.sla_status || '—'}</Badge></td>
-                <td className="px-4 py-3">{c.ai_confidence != null ? `${c.ai_confidence}%` : '—'}</td>
+                <td className="px-4 py-3"><SlaBadge status={c.sla_status} /></td>
+                <td className="px-4 py-3"><AiConfidenceBadge score={c.ai_confidence} /></td>
                 <td className="px-4 py-3 text-muted">{new Date(c.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-muted">{new Date(c.updated_at).toLocaleDateString()}</td>
               </tr>

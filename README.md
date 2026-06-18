@@ -82,7 +82,20 @@ npm run dev
 
 ## Environment Variables
 
-See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`.
+See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`, `WEBHOOK_API_KEY`.
+
+## Pilot Readiness (Phase 2)
+
+New capabilities in this phase:
+
+- **Golden path demo** — `CASE-GOLDEN` seed case for live analyst workflow demos
+- **Three-panel case workspace** — alert/SLA/timeline, investigation/decision, AI triage assistant
+- **Trust Metrics** — `/app/trust-metrics` with human-AI decision analytics
+- **Webhook alert ingestion** — `POST /integrations/webhook/alerts` (API key auth)
+- **Client report upgrade** — structured sections, preview mode, print-friendly view
+- **Security tests** — tenant isolation and audit log coverage
+
+See [docs/demo-flow.md](docs/demo-flow.md) for the full golden path demo script.
 
 ## Demo User Accounts
 
@@ -93,6 +106,7 @@ See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORI
 | analyst1@trustops.demo | SOC Analyst | TrustOps123! |
 | analyst2@trustops.demo | SOC Analyst | TrustOps123! |
 | client@apex.demo | Client Admin (Apex Energy) | TrustOps123! |
+| viewer@apex.demo | Client Viewer (Apex Energy) | TrustOps123! |
 
 ## Running Tests
 
@@ -102,7 +116,7 @@ cd backend && pytest tests/ -v
 
 ## Demo Validation
 
-Automated API validation (all 19 PRD demo steps):
+Automated API validation (golden path, trust metrics, webhook, isolation):
 
 ```bash
 cd backend
@@ -110,17 +124,11 @@ export DATABASE_URL=postgresql://trustops:trustops@localhost:5434/trustops
 API_URL=http://localhost:8001 python scripts/validate_demo.py
 ```
 
-Manual UI demo flow:
+Manual UI demo: see [docs/demo-flow.md](docs/demo-flow.md).
 
-1. Log in as `analyst1@trustops.demo` → lands on **Case Queue**
-2. Open a case → generate AI recommendation → submit analyst decision
-3. Log in as `manager@trustops.demo` → lands on **Manager Dashboard**
-4. Open a case → **QA Review** → **Reports** → generate and publish
-5. Log in as `client@apex.demo` → **Client Dashboard** → view published report only
+**Re-seeding:** `seed.py` only runs on an empty database. For a fresh pilot demo:
 
-## MVP Demo Flow (API)
-
-1. Analyst login → case queue → create case → AI triage → decision → notes/evidence
-2. Manager login → dashboard → QA review → generate/publish monthly report
-3. Client login → client dashboard → published reports only
-4. Verify client cannot see internal notes, QA data, or other clients' data
+```bash
+docker compose down -v && docker compose up -d db
+cd backend && alembic upgrade head && python seed.py
+```

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import ai_decisions, auth, cases, clients, dashboards, evidence, imports, notes, qa_reports, sla, users
+from app.api import ai_decisions, auth, cases, clients, dashboards, evidence, imports, integrations, notes, qa_reports, sla, users
 from app.core.config import settings
 
 app = FastAPI(title="TrustOps API", version="0.1.0", docs_url="/docs")
@@ -29,6 +29,7 @@ app.include_router(cases.router)
 app.include_router(notes.router)
 app.include_router(evidence.router)
 app.include_router(imports.router)
+app.include_router(integrations.router)
 app.include_router(ai_decisions.router)
 app.include_router(sla.router)
 app.include_router(qa_reports.router)

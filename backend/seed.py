@@ -1,7 +1,7 @@
 """Seed demo data for TrustOps MVP."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.auth.security import hash_password
 from app.core.constants import DEFAULT_PASSWORD, ROLES
@@ -400,7 +400,72 @@ def seed():
                 )
 
         db.commit()
+
+        # Golden path demo case — fresh workflow for live demos
+        golden = Case(
+            case_number="CASE-GOLDEN",
+            organization_id=org.id,
+            client_id=clients["Apex Energy"].id,
+            title="[DEMO] Suspicious OAuth consent grant",
+            description="Golden path demo case. Use this case for live analyst workflow demos.",
+            source_system="Microsoft Defender",
+            severity="High",
+            priority="P2 High",
+            status="New",
+            assigned_to_user_id=analyst1.id,
+            detected_at=NOW - timedelta(minutes=30),
+            created_at=NOW - timedelta(minutes=30),
+        )
+        db.add(golden)
+        db.flush()
+        db.add(
+            Alert(
+                case_id=golden.id,
+                client_id=clients["Apex Energy"].id,
+                title=golden.title,
+                description="OAuth consent grant from unfamiliar application detected for privileged user.",
+                severity="High",
+                source_system="Microsoft Defender",
+                asset_name="O365-TENANT",
+                username="finance.admin",
+                source_ip="198.51.100.10",
+                mitre_tactic="Persistence",
+                mitre_technique="T1098 - Account Manipulation",
+                raw_event='{"event":"oauth_consent","app":"Unknown SaaS App"}',
+                detected_at=golden.detected_at,
+            )
+        )
+        db.add(CaseEvent(case_id=golden.id, event_type="Case Created", created_by_user_id=admin.id))
+        sla_svc.create_sla_events_for_case(golden)
+
+        add_user("viewer@apex.demo", "Apex Client Viewer", "Client Viewer", clients["Apex Energy"])
+
+        from app.models import Report
+
+        report = Report(
+            client_id=clients["Apex Energy"].id,
+            report_type="monthly",
+            reporting_period_start=date(NOW.year, NOW.month, 1),
+            reporting_period_end=NOW.date(),
+            title=f"Apex Energy Monthly SOC Report (Pilot)",
+            executive_summary="The SOC team monitored Apex Energy's environment and responded to security events within agreed SLA targets.",
+            case_summary_json={"total": 4, "by_severity": {"High": 2, "Medium": 1, "Critical": 1}},
+            sla_summary_json={"compliance_percentage": 92.5, "summary": "SLA performance remained strong."},
+            notable_incidents_json={"items": [{"title": "Privileged account login outside hours", "severity": "High"}]},
+            recurring_themes_json={"items": ["Authentication anomalies", "OAuth consent grants"]},
+            recommendations_json={
+                "items": ["Enable MFA for privileged accounts", "Review OAuth app permissions"],
+                "human_ai_triage_summary": "AI-assisted triage supported analyst decisions with 75% acceptance rate.",
+                "soc_value_narrative": "TrustOps enabled consistent case management and measurable SLA governance.",
+            },
+            status="Published",
+            generated_by_user_id=manager.id,
+            published_at=NOW,
+        )
+        db.add(report)
+        db.commit()
         print(f"Seeded organization, {len(clients)} clients, users, and {case_num} cases.")
+        print(f"Golden path case: CASE-GOLDEN (Apex Energy, assigned to analyst1)")
         print(f"Default password: {DEFAULT_PASSWORD}")
     finally:
         db.close()

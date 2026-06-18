@@ -132,7 +132,7 @@ def publish_report(
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    ReportService(db).publish(report)
+    ReportService(db).publish(report, user)
     db.commit()
     db.refresh(report)
     return report

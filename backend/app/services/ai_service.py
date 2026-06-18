@@ -77,6 +77,22 @@ class AIRecommendationService:
         self.case_service.add_event(
             case.id, "AI Recommendation Generated", "AI triage recommendation created", user
         )
+        from app.services.audit_service import AuditLogService
+
+        AuditLogService.log(
+            self.db,
+            event_type="ai_recommendation_generated",
+            user=user,
+            client_id=case.client_id,
+            case_id=case.id,
+            entity_type="ai_recommendation",
+            entity_id=recommendation.id,
+            new_value={
+                "recommended_disposition": rec_disposition,
+                "recommended_priority": rec_priority,
+                "confidence_score": recommendation.confidence_score,
+            },
+        )
         return recommendation
 
     def get_for_case(self, case_id: uuid.UUID) -> list[AIRecommendation]:

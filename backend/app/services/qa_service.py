@@ -39,6 +39,17 @@ class QAService:
             review_notes=fields.get("review_notes"),
         )
         self.db.add(review)
+        from app.services.audit_service import AuditLogService
+
+        AuditLogService.log(
+            self.db,
+            event_type="qa_review_created",
+            user=reviewer,
+            case_id=case_id,
+            entity_type="qa_review",
+            entity_id=review.id,
+            new_value={"overall_score": overall},
+        )
         return review
 
     def update_review(self, review: QAReview, **fields) -> QAReview:

@@ -60,3 +60,13 @@ def executive_dashboard(
     if client_id:
         return DashboardService(db).client_metrics(client_id)
     return DashboardService(db).soc_manager_metrics(user.organization_id)
+
+
+@router.get("/trust-metrics")
+def trust_metrics_dashboard(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
+):
+    from app.services.trust_metrics_service import TrustMetricsService
+
+    return TrustMetricsService(db).get_metrics(user.organization_id)

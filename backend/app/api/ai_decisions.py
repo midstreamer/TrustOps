@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth.security import SOC_ROLES, enforce_client_access, get_current_user, get_user_roles
+from app.auth.security import SOC_ROLES, enforce_client_access, get_current_user, get_user_roles, is_client_user
 from app.db.session import get_db
 from app.models import AIRecommendation, Case, User
 from app.schemas import AIRecommendationResponse, AnalystDecisionCreate, AnalystDecisionResponse
@@ -19,6 +19,8 @@ def generate_ai_recommendation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="AI recommendations not available to client users")
     if not any(r in SOC_ROLES for r in get_user_roles(user)):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     try:
@@ -36,10 +38,11 @@ def list_ai_recommendations(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="AI recommendations not available to client users")
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    enforce_client_access(user, case.client_id)
     return AIRecommendationService(db).get_for_case(case_id)
 
 
@@ -49,6 +52,8 @@ def get_ai_recommendation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="AI recommendations not available to client users")
     rec = db.query(AIRecommendation).filter(AIRecommendation.id == recommendation_id).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Recommendation not found")
@@ -65,6 +70,8 @@ def submit_decision(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="Analyst decisions not available to client users")
     if not any(r in SOC_ROLES for r in get_user_roles(user)):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     case = db.query(Case).filter(Case.id == case_id).first()

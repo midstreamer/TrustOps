@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LoadingState, ErrorState } from '@/components/ui/states';
 
 export default function ClientDashboardPage() {
   const { user } = useAuth();
@@ -22,8 +23,8 @@ export default function ClientDashboardPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) return <div className="text-muted">Loading client dashboard...</div>;
-  if (error) return <div className="rounded-lg border border-red-900/50 bg-red-900/20 p-4 text-red-300">{error}</div>;
+  if (loading) return <LoadingState message="Loading client dashboard..." />;
+  if (error) return <ErrorState message={error} />;
   if (!metrics) return null;
 
   const severityData = Object.entries((metrics.cases_by_severity as Record<string, number>) || {}).map(([name, value]) => ({ name, value }));
