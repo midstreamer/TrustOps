@@ -408,3 +408,35 @@ class WebhookAlertResponse(BaseModel):
     case_number: str
     client_id: str
     status: str
+
+
+class SentinelAlertPayload(BaseModel):
+    """Microsoft Sentinel alert payload — supports native Sentinel field names."""
+
+    client_id: UUID
+    title: str | None = None
+    displayName: str | None = None
+    alertDisplayName: str | None = None
+    description: str | None = None
+    alertDescription: str | None = None
+    severity: str
+    priority: str | None = None
+    source_alert_id: str | None = None
+    systemAlertId: str | None = None
+    alertId: str | None = None
+    asset_name: str | None = None
+    username: str | None = None
+    source_ip: str | None = None
+    destination_ip: str | None = None
+    mitre_tactic: str | None = None
+    mitre_technique: str | None = None
+    tactics: list[str] | None = None
+    techniques: list[str] | None = None
+    entities: list[dict] | None = None
+    detected_at: datetime | None = None
+    endTimeUtc: str | None = None
+    startTimeUtc: str | None = None
+    timeGenerated: str | None = None
+
+    class Config:
+        extra = "allow"

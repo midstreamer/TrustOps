@@ -1,0 +1,30 @@
+{
+  "client_id": "REPLACE_WITH_APEX_CLIENT_UUID",
+  "displayName": "Suspicious OAuth consent grant",
+  "description": "An OAuth consent grant was detected for a privileged account from an unfamiliar SaaS application.",
+  "severity": "High",
+  "priority": "P2 High",
+  "systemAlertId": "sentinel-demo-oauth-001",
+  "providerName": "Microsoft Sentinel",
+  "productName": "Azure Sentinel",
+  "tactics": ["Persistence", "Privilege Escalation"],
+  "techniques": ["T1098", "T1078"],
+  "entities": [
+    {
+      "$id": "Account",
+      "name": "finance.admin",
+      "upnSuffix": "apexenergy.demo"
+    },
+    {
+      "$id": "Host",
+      "hostName": "O365-TENANT",
+      "osFamily": "Other"
+    },
+    {
+      "$id": "Ip",
+      "address": "198.51.100.10"
+    }
+  ],
+  "endTimeUtc": "2026-06-18T14:30:00Z",
+  "startTimeUtc": "2026-06-18T14:25:00Z"
+}

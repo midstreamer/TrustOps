@@ -143,6 +143,38 @@ export interface Report {
   created_at: string;
 }
 
+export interface TrustMetrics {
+  ai_recommendation_count: number;
+  ai_acceptance_rate: number;
+  ai_modification_rate: number;
+  ai_rejection_rate: number;
+  ai_not_used_rate: number;
+  ai_escalated_rate: number;
+  human_ai_agreement_rate: number;
+  average_ai_confidence: number;
+  average_analyst_confidence: number;
+  override_count: number;
+  overrides_by_analyst: Record<string, number>;
+  overrides_by_disposition: Record<string, number>;
+  ai_action_breakdown: Record<string, number>;
+  trust_calibration_score: number;
+  trust_calibration_definition: string;
+  trust_calibration_components: {
+    agreement_component: number;
+    high_confidence_alignment: number;
+    qa_validation_component: number;
+  };
+  ai_high_confidence_accepted: number;
+  ai_high_confidence_rejected: number;
+  ai_low_confidence_accepted: number;
+  analyst_low_confidence_escalations: number;
+  human_ai_disagreement_rate_by_severity: Record<string, number>;
+  override_reasons_by_category: Record<string, number>;
+  decision_reversal_rate_after_qa: number;
+  qa_confirmed_override_accuracy: number;
+  qa_review_count: number;
+}
+
 export interface SLAPolicy {
   id: string;
   client_id: string;

@@ -1,11 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.api import ai_decisions, auth, cases, clients, dashboards, evidence, imports, integrations, notes, qa_reports, sla, users
 from app.core.config import settings
+from app.db.session import get_db
 
-app = FastAPI(title="TrustOps API", version="0.1.0", docs_url="/docs")
+app = FastAPI(title="TrustOps API", version=settings.app_version, docs_url="/docs")
 
 origins = [o.strip() for o in settings.cors_origins.split(",")]
 app.add_middleware(
@@ -39,3 +42,24 @@ app.include_router(dashboards.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ready", "database": "connected"}
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "database": "unavailable"},
+        )
+
+
+@app.get("/version")
+def version():
+    return {
+        "name": "TrustOps API",
+        "version": settings.app_version,
+        "deployment_mode": settings.deployment_mode,
+    }

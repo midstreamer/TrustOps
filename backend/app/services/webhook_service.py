@@ -39,6 +39,7 @@ class WebhookAlertService:
         mitre_technique: str | None = None,
         raw_event: str | None = None,
         detected_at: datetime | None = None,
+        integration_source: str = "webhook",
     ) -> dict:
         if not title.strip():
             raise HTTPException(status_code=400, detail="title is required")
@@ -84,17 +85,18 @@ class WebhookAlertService:
             detected_at=detected,
             alert_data=alert_data,
         )
+        source_label = "Sentinel" if integration_source == "sentinel" else (source_system or "webhook")
         self.case_service.add_event(
             case.id,
-            "Alert Ingested via Webhook",
-            f"Source: {source_system or 'webhook'}",
+            f"Alert Ingested via {source_label}",
+            f"Source: {source_system or integration_source}",
             actor,
         )
         self.sla_service.create_sla_events_for_case(case)
 
         AuditLogService.log(
             self.db,
-            event_type="webhook_alert_ingested",
+            event_type=f"{integration_source}_alert_ingested",
             user=actor,
             organization_id=organization_id,
             client_id=client_id,

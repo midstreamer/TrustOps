@@ -1,13 +1,16 @@
+"""Report generation v2 — buyer-ready client value reports."""
+
 import uuid
 from collections import Counter
 from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.ai.prompts import MONTHLY_REPORT_SYSTEM_PROMPT, MONTHLY_REPORT_USER_TEMPLATE, PROMPT_VERSION
+from app.ai.prompts import MONTHLY_REPORT_SYSTEM_PROMPT, MONTHLY_REPORT_USER_TEMPLATE
 from app.ai.provider import AIProvider
-from app.models import AnalystDecision, Case, QAReview, Report, SLAEvent, User
+from app.models import AnalystDecision, Case, Report, User
 from app.services.sla_service import SLAService
+from app.services.trust_metrics_service import TrustMetricsService
 
 
 class ReportService:
@@ -76,11 +79,33 @@ class ReportService:
         human_ai_agreed = sum(1 for d in decisions if d.human_ai_agreement is True)
         agreement_total = sum(1 for d in decisions if d.human_ai_agreement is not None) or 1
 
+        org_id = cases[0].organization_id if cases else user.organization_id
+        trust = TrustMetricsService(self.db).get_metrics(org_id) if org_id else {}
+
         human_ai_summary = (
             f"Analysts reviewed {len(decisions)} AI-assisted triage recommendations during this period. "
             f"AI recommendations were accepted {round(ai_accept / ai_total * 100)}% of the time. "
             f"Human-AI agreement rate was {round(human_ai_agreed / agreement_total * 100)}%. "
             "All disposition decisions were made by qualified SOC analysts."
+        )
+
+        ai_oversight = (
+            f"AI-assisted triage supported analyst workflows with a Trust Calibration Score of "
+            f"{trust.get('trust_calibration_score', 'N/A')}. "
+            f"{trust.get('ai_high_confidence_accepted', 0)} high-confidence AI recommendations were accepted; "
+            f"{trust.get('override_count', 0)} analyst overrides were recorded and reviewed through QA processes."
+        )
+
+        trust_summary = {
+            "trust_calibration_score": trust.get("trust_calibration_score"),
+            "human_ai_agreement_rate": trust.get("human_ai_agreement_rate"),
+            "ai_acceptance_rate": trust.get("ai_acceptance_rate"),
+            "override_count": trust.get("override_count"),
+            "definition": trust.get("trust_calibration_definition", ""),
+        }
+
+        service_activity = parsed.get("soc_activity_overview") or (
+            f"The SOC handled {len(cases)} security cases during this reporting period."
         )
 
         report = Report(
@@ -94,19 +119,26 @@ class ReportService:
                 "total": len(cases),
                 "by_severity": cases_by_severity,
                 "by_disposition": cases_by_disposition,
-                "overview": parsed.get("soc_activity_overview"),
+                "overview": service_activity,
+                "service_activity": service_activity,
             },
             sla_summary_json={**sla_metrics, "summary": parsed.get("sla_performance_summary")},
             notable_incidents_json={
                 "items": notable,
                 "summary": parsed.get("notable_incidents_summary"),
+                "notable_cases": notable,
             },
             recurring_themes_json={"items": parsed.get("recurring_risk_themes", [])},
             recommendations_json={
                 "items": parsed.get("recommendations", []),
+                "recommended_actions": parsed.get("recommendations", []),
                 "next_month_priorities": parsed.get("next_month_priorities", []),
+                "next_month_focus": parsed.get("next_month_priorities", []),
                 "human_ai_triage_summary": human_ai_summary,
+                "ai_triage_oversight": ai_oversight,
+                "trust_metrics_summary": trust_summary,
                 "soc_value_narrative": parsed.get("soc_activity_overview"),
+                "value_delivered": parsed.get("soc_activity_overview"),
             },
             status="Draft",
             generated_by_user_id=user.id,
@@ -130,3 +162,20 @@ class ReportService:
                 new_value={"title": report.title, "period": str(report.reporting_period_start)},
             )
         return report
+
+    @staticmethod
+    def client_safe_sections(report: Report) -> dict:
+        """Return only client-visible report sections (no internal QA or AI prompts)."""
+        recs = report.recommendations_json or {}
+        return {
+            "executive_summary": report.executive_summary,
+            "service_activity": (report.case_summary_json or {}).get("service_activity"),
+            "notable_cases": (report.notable_incidents_json or {}).get("notable_cases", []),
+            "sla_performance": report.sla_summary_json,
+            "ai_triage_oversight": recs.get("ai_triage_oversight"),
+            "trust_metrics_summary": recs.get("trust_metrics_summary"),
+            "recurring_risk_themes": (report.recurring_themes_json or {}).get("items", []),
+            "recommended_actions": recs.get("recommended_actions", recs.get("items", [])),
+            "value_delivered": recs.get("value_delivered"),
+            "next_month_focus": recs.get("next_month_focus", recs.get("next_month_priorities", [])),
+        }

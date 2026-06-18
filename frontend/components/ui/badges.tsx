@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge, severityVariant, slaVariant } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 

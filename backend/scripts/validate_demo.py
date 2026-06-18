@@ -47,6 +47,15 @@ def main() -> int:
     r = httpx.get(f"{BASE}/health")
     check("API health", r.status_code == 200 and r.json().get("status") == "ok", r.text)
 
+    r_ready = httpx.get(f"{BASE}/ready")
+    check("API ready", r_ready.status_code == 200 and r_ready.json().get("status") == "ready", r_ready.text)
+
+    r_ver = httpx.get(f"{BASE}/version")
+    check("API version", r_ver.status_code == 200 and "version" in r_ver.json(), r_ver.text)
+
+    r_sentinel = httpx.get(f"{BASE}/integrations/sentinel/health")
+    check("Sentinel integration health", r_sentinel.status_code == 200, r_sentinel.text)
+
     # 1-2: Analyst login + case queue
     print("\n[Analyst flow]")
     analyst_token = login("analyst1@trustops.demo")
@@ -152,6 +161,7 @@ def main() -> int:
         t = tm.json()
         check("Trust metrics has AI counts", "ai_recommendation_count" in t)
         check("Trust metrics has agreement rate", "human_ai_agreement_rate" in t)
+        check("Trust metrics v2 calibration score", "trust_calibration_score" in t)
 
     # Webhook alert ingestion
     print("\n[Webhook ingestion]")

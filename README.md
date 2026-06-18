@@ -1,19 +1,30 @@
-# TrustOps MVP
+# TrustOps
 
 **The SIEM detects. The SOAR enriches. The case platform manages the work. The portal proves the service value.**
 
 TrustOps is a human-in-the-loop SOC case management platform for SOCaaS/MDR providers. It is the operational system of record for managed SOC work — not a SIEM, SOAR, EDR, or XDR replacement.
 
-## Product Capabilities (MVP)
+**Current release:** `v0.1.0-pilot` — see [CHANGELOG.md](CHANGELOG.md)
 
-- Multi-client organization management
-- Security case lifecycle management
-- CSV alert import with preview/confirm
-- AI-assisted triage recommendations (OpenAI or mock mode)
-- Analyst decision capture with human-AI agreement tracking
+## Screenshots
+
+> Placeholder — add screenshots of Case Workspace, Trust Metrics, and Client Report preview for your deployment.
+
+| Case Workspace | Trust Metrics | Client Report |
+|----------------|---------------|---------------|
+| _screenshot_ | _screenshot_ | _screenshot_ |
+
+## Product Capabilities
+
+- Multi-client organization management with tenant isolation
+- Security case lifecycle and three-panel analyst workspace
+- AI-assisted triage with human-AI agreement tracking
+- Trust Metrics v2 with Trust Calibration Score
 - SLA policy configuration and event tracking
 - QA reviews for SOC managers
-- Client-facing monthly value reports
+- Client Value Report v2 with print/PDF export
+- Microsoft Sentinel integration (`POST /integrations/sentinel/alerts`)
+- Generic webhook alert ingestion
 - Role-based dashboards for analysts, managers, and clients
 
 ## Architecture
@@ -22,112 +33,83 @@ TrustOps is a human-in-the-loop SOC case management platform for SOCaaS/MDR prov
 trustops/
   frontend/     Next.js 14 + React + TypeScript + Tailwind
   backend/      FastAPI + SQLAlchemy + Alembic + PostgreSQL
+  docs/         Demo scripts, deployment, integrations
+  samples/      Integration payload samples
   docker-compose.yml
 ```
 
-## Tech Stack
-
-| Layer | Technologies |
-|-------|-------------|
-| Frontend | Next.js, React, TypeScript, Tailwind CSS, Recharts |
-| Backend | FastAPI, Python, SQLAlchemy, Alembic, Pydantic |
-| Database | PostgreSQL 16 |
-| Auth | JWT + bcrypt + RBAC |
-| AI | OpenAI-compatible API (mock fallback for demos) |
-
-## Local Setup
-
-### Quick Start (Docker)
+## Quick Start (Local Demo)
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose up -d db
+cd backend && alembic upgrade head && python seed.py
+uvicorn app.main:app --reload --port 8001
+cd frontend && NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
-In a separate terminal:
+- Frontend: http://localhost:3000 (or 3001)
+- Backend API: http://localhost:8001
+- API Docs: http://localhost:8001/docs
 
-```bash
-docker compose exec backend alembic upgrade head
-docker compose exec backend python seed.py
-```
+**Health endpoints:** `GET /health` · `GET /ready` · `GET /version`
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+## Demo Accounts
 
-> **Port conflicts:** If 5432 or 8000 are in use, Postgres is mapped to **5434** in `docker-compose.yml`. Run the backend on **8001** and set `NEXT_PUBLIC_API_URL=http://localhost:8001`.
+| Email | Role | Password |
+|-------|------|----------|
+| analyst1@trustops.demo | SOC Analyst | TrustOps123! |
+| manager@trustops.demo | SOC Manager | TrustOps123! |
+| client@apex.demo | Client Admin (Apex) | TrustOps123! |
+| viewer@apex.demo | Client Viewer (Apex) | TrustOps123! |
+| admin@trustops.demo | Platform Admin | TrustOps123! |
 
-### Local Development
+## Buyer Demo (20 min)
 
-**Backend:**
+Start with **CASE-GOLDEN** (Apex Energy). Full script:
 
+- [docs/demo-script.md](docs/demo-script.md) — step-by-step demo
+- [docs/buyer-demo-narrative.md](docs/buyer-demo-narrative.md) — positioning
+- [docs/demo-personas.md](docs/demo-personas.md) — personas
+- [docs/demo-data-dictionary.md](docs/demo-data-dictionary.md) — seed data reference
+
+## Pilot Deployment
+
+- [docs/deployment.md](docs/deployment.md) — local-demo, pilot-single-tenant, pilot-multi-client
+- [docs/pilot-setup.md](docs/pilot-setup.md) — step-by-step pilot bootstrap
+- [docs/security-controls.md](docs/security-controls.md) — security model
+
+**CLI setup:**
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export DATABASE_URL=postgresql://trustops:trustops@localhost:5434/trustops
-alembic upgrade head && python seed.py
-export CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-uvicorn app.main:app --reload --port 8001
+python scripts/pilot_setup.py init-org --name "Your SOC"
+python scripts/pilot_setup.py add-client --client-name "Apex Energy"
+python scripts/pilot_setup.py add-user --email analyst@demo --name "Analyst" --role "SOC Analyst"
+python scripts/pilot_setup.py demo-case --client "Apex Energy"
 ```
 
-**Frontend:**
+## Integrations
+
+| Integration | Endpoint | Docs |
+|-------------|----------|------|
+| Microsoft Sentinel | `POST /integrations/sentinel/alerts` | [docs/integrations/sentinel.md](docs/integrations/sentinel.md) |
+| Generic webhook | `POST /integrations/webhook/alerts` | [docs/demo-flow.md](docs/demo-flow.md) |
+
+Sample Sentinel payload: [samples/sentinel-alert-payload.json](samples/sentinel-alert-payload.json)
+
+## Tests & Validation
 
 ```bash
-cd frontend
-npm install
-export NEXT_PUBLIC_API_URL=http://localhost:8001
-npm run dev
+cd backend && pytest tests/ -v
+API_URL=http://localhost:8001 python scripts/validate_demo.py
+cd frontend && npm run build
 ```
 
 ## Environment Variables
 
-See `.env.example` for `DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`, `WEBHOOK_API_KEY`.
+See [.env.example](.env.example) for `DATABASE_URL`, `JWT_SECRET`, `WEBHOOK_API_KEY`, `SENTINEL_API_KEY`, `DEPLOYMENT_MODE`, `APP_VERSION`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`.
 
-## Pilot Readiness (Phase 2)
-
-New capabilities in this phase:
-
-- **Golden path demo** — `CASE-GOLDEN` seed case for live analyst workflow demos
-- **Three-panel case workspace** — alert/SLA/timeline, investigation/decision, AI triage assistant
-- **Trust Metrics** — `/app/trust-metrics` with human-AI decision analytics
-- **Webhook alert ingestion** — `POST /integrations/webhook/alerts` (API key auth)
-- **Client report upgrade** — structured sections, preview mode, print-friendly view
-- **Security tests** — tenant isolation and audit log coverage
-
-See [docs/demo-flow.md](docs/demo-flow.md) for the full golden path demo script.
-
-## Demo User Accounts
-
-| Email | Role | Password |
-|-------|------|----------|
-| admin@trustops.demo | Platform Admin | TrustOps123! |
-| manager@trustops.demo | SOC Manager | TrustOps123! |
-| analyst1@trustops.demo | SOC Analyst | TrustOps123! |
-| analyst2@trustops.demo | SOC Analyst | TrustOps123! |
-| client@apex.demo | Client Admin (Apex Energy) | TrustOps123! |
-| viewer@apex.demo | Client Viewer (Apex Energy) | TrustOps123! |
-
-## Running Tests
-
-```bash
-cd backend && pytest tests/ -v
-```
-
-## Demo Validation
-
-Automated API validation (golden path, trust metrics, webhook, isolation):
-
-```bash
-cd backend
-export DATABASE_URL=postgresql://trustops:trustops@localhost:5434/trustops
-API_URL=http://localhost:8001 python scripts/validate_demo.py
-```
-
-Manual UI demo: see [docs/demo-flow.md](docs/demo-flow.md).
-
-**Re-seeding:** `seed.py` only runs on an empty database. For a fresh pilot demo:
-
+**Re-seeding:** `seed.py` only runs on an empty database:
 ```bash
 docker compose down -v && docker compose up -d db
 cd backend && alembic upgrade head && python seed.py

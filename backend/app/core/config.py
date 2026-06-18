@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     openai_base_url: str = ""
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
     webhook_api_key: str = "dev-webhook-key-change-in-production"
+    sentinel_api_key: str = ""
+    app_version: str = "0.1.0-pilot"
+    deployment_mode: str = "local-demo"
 
     class Config:
         env_file = ".env"

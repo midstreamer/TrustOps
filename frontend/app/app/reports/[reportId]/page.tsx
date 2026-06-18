@@ -7,18 +7,10 @@ import { api } from '@/lib/api';
 import { useAuth, hasRole, MANAGER_ROLES } from '@/hooks/useAuth';
 import type { Report } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { LoadingState, ErrorState } from '@/components/ui/states';
+import { ReportContent } from '@/components/reports/ReportContent';
 import { Eye } from 'lucide-react';
-
-function ReportSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mb-6">
-      <h2 className="mb-2 border-b border-border pb-1 text-lg font-semibold">{title}</h2>
-      {children}
-    </section>
-  );
-}
 
 export default function ReportDetailPage() {
   const { reportId } = useParams<{ reportId: string }>();
@@ -46,12 +38,6 @@ export default function ReportDetailPage() {
   if (error) return <ErrorState message={error} />;
   if (!report) return null;
 
-  const caseSummary = report.case_summary_json || {};
-  const slaSummary = report.sla_summary_json || {};
-  const notable = report.notable_incidents_json || {};
-  const themes = report.recurring_themes_json || {};
-  const recs = report.recommendations_json || {};
-
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -63,7 +49,7 @@ export default function ReportDetailPage() {
         </div>
         <div className="flex gap-2">
           <Link href={`/app/reports/${reportId}/preview`}>
-            <Button variant="secondary"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+            <Button variant="secondary"><Eye className="mr-2 h-4 w-4" /> Preview / PDF</Button>
           </Link>
           {isManager && report.status === 'Draft' && <Button onClick={publish}>Publish</Button>}
           {isManager && report.status !== 'Archived' && (
@@ -75,64 +61,8 @@ export default function ReportDetailPage() {
         </div>
       </div>
 
-      <Card className="space-y-6">
-        <ReportSection title="Executive Summary">
-          <p className="text-sm leading-relaxed">{report.executive_summary || 'No summary available.'}</p>
-        </ReportSection>
-
-        <ReportSection title="SOC Activity Overview">
-          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
-            <div><span className="text-muted">Total Cases</span><div className="text-xl font-bold">{(caseSummary as { total?: number }).total ?? '—'}</div></div>
-          </div>
-          {(caseSummary as { by_severity?: Record<string, number> }).by_severity && (
-            <div className="mt-3">
-              <h3 className="mb-1 text-sm font-medium text-muted">By Severity</h3>
-              <ul className="text-sm">{Object.entries((caseSummary as { by_severity: Record<string, number> }).by_severity).map(([k, v]) => <li key={k}>{k}: {v}</li>)}</ul>
-            </div>
-          )}
-          {(caseSummary as { by_disposition?: Record<string, number> }).by_disposition && (
-            <div className="mt-3">
-              <h3 className="mb-1 text-sm font-medium text-muted">By Disposition</h3>
-              <ul className="text-sm">{Object.entries((caseSummary as { by_disposition: Record<string, number> }).by_disposition).map(([k, v]) => <li key={k}>{k}: {v}</li>)}</ul>
-            </div>
-          )}
-        </ReportSection>
-
-        <ReportSection title="SLA Performance">
-          <p className="text-sm">{(slaSummary as { summary?: string }).summary || 'SLA data for the reporting period.'}</p>
-          {(slaSummary as { compliance_percentage?: number }).compliance_percentage != null && (
-            <p className="mt-2 text-lg font-bold">{(slaSummary as { compliance_percentage: number }).compliance_percentage}% compliance</p>
-          )}
-        </ReportSection>
-
-        <ReportSection title="Notable Incidents">
-          <p className="mb-2 text-sm text-muted">{(notable as { summary?: string }).summary}</p>
-          <ul className="list-inside list-disc text-sm">
-            {((notable as { items?: Array<{ title: string; severity: string }> }).items || []).map((item, i) => (
-              <li key={i}>{item.title} ({item.severity})</li>
-            ))}
-          </ul>
-        </ReportSection>
-
-        <ReportSection title="Recurring Themes">
-          <ul className="list-inside list-disc text-sm">
-            {((themes as { items?: string[] }).items || []).map((t, i) => <li key={i}>{t}</li>)}
-          </ul>
-        </ReportSection>
-
-        <ReportSection title="Recommendations">
-          <ul className="mb-4 list-inside list-disc text-sm">
-            {((recs as { items?: string[] }).items || []).map((r, i) => <li key={i}>{r}</li>)}
-          </ul>
-        </ReportSection>
-
-        <ReportSection title="Human-AI Triage Summary">
-          <p className="text-sm">{(recs as { human_ai_triage_summary?: string }).human_ai_triage_summary || 'AI-assisted triage supported analyst decision-making during this period.'}</p>
-        </ReportSection>
-
-        <ReportSection title="SOC Value Delivered">
-          <p className="text-sm">{(recs as { soc_value_narrative?: string }).soc_value_narrative || (caseSummary as { overview?: string }).overview || 'The SOC team provided continuous monitoring and case management services.'}</p>
-        </ReportSection>
+      <Card className="space-y-2">
+        <ReportContent report={report} variant="screen" />
       </Card>
     </div>
   );
