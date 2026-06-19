@@ -123,6 +123,26 @@ def update_report(
     return report
 
 
+@router.post("/reports/{report_id}/regenerate", response_model=ReportResponse)
+def regenerate_report(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
+):
+    from app.models import Client
+
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    client = db.query(Client).filter(Client.id == report.client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    ReportService(db).regenerate_content(report, user, client.name)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
 @router.post("/reports/{report_id}/publish", response_model=ReportResponse)
 def publish_report(
     report_id: UUID,
@@ -132,7 +152,10 @@ def publish_report(
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
-    ReportService(db).publish(report, user)
+    try:
+        ReportService(db).publish(report, user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     db.commit()
     db.refresh(report)
     return report

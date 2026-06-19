@@ -376,6 +376,23 @@ class ReportResponse(BaseModel):
         from_attributes = True
 
 
+class ClientChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ClientChatRequest(BaseModel):
+    message: str
+    history: list[ClientChatMessage] = []
+    period_days: int = 30
+
+
+class ClientChatResponse(BaseModel):
+    reply: str
+    client_id: UUID
+    period_days: int
+
+
 class ImportPreviewResponse(BaseModel):
     id: UUID
     filename: str
@@ -409,6 +426,27 @@ class WebhookAlertResponse(BaseModel):
     case_number: str
     client_id: str
     status: str
+    duplicate: bool = False
+    ingestion_status: str = "created"
+
+
+class IntegrationEventResponse(BaseModel):
+    id: UUID
+    organization_id: UUID
+    client_id: UUID | None
+    integration_source: str
+    event_type: str
+    status: str
+    source_system: str | None
+    source_alert_id: str | None
+    case_id: UUID | None
+    case_number: str | None
+    error_message: str | None
+    payload_summary: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class SentinelAlertPayload(BaseModel):

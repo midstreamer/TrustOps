@@ -1,6 +1,6 @@
 # TrustOps Buyer Demo Script
 
-**Duration:** 20 minutes  
+**Duration:** 22 minutes  
 **Client:** Apex Energy  
 **Golden case:** CASE-GOLDEN  
 **Password:** `TrustOps123!`
@@ -8,9 +8,10 @@
 ## Pre-Demo Checklist
 
 - [ ] Backend running (`GET /health` → ok, `GET /ready` → ready)
-- [ ] Frontend running on port 3000 or 3001
+- [ ] Frontend running on port 3001 (`npm run dev`)
 - [ ] Seed data loaded (`python seed.py`)
 - [ ] Browser logged out; cache cleared
+- [ ] Optional: set `OPENAI_API_KEY` for live AI (mock mode works for demos)
 
 ## Act 1: Analyst — Case-Centered SOC Work (7 min)
 
@@ -34,28 +35,34 @@
 **Login:** `manager@trustops.demo`
 
 1. **Manager Dashboard** — open cases, SLA at risk, AI acceptance rate
-2. **Trust Metrics** — show Trust Calibration Score and v2 metrics
+2. **Trust Metrics** — filter by **Apex Energy** and date range; show Trust Calibration Score, weekly trends, and v2 metrics
    - Explain calibration transparently (operational indicator, not AI certification)
 3. Open a triaged case → complete **QA Review**
 4. **Reports** → generate Apex monthly report → **Preview** → **Publish**
+   - If sections look thin, demonstrate **Regenerate** on the report detail page
 
 **Talking point:** *"Managers govern quality, SLA performance, and human-AI trust — without replacing the SIEM."*
 
-## Act 3: Client — Value Proof (4 min)
+## Act 3: Client — Value Proof (6 min)
 
 **Login:** `client@apex.demo`
 
-1. **Client Dashboard** — open cases, SLA performance, notable incidents
-2. **Reports** — view published report only
-3. Walk through v2 sections: Service Activity, AI-Assisted Triage Oversight, Trust Metrics Summary, Value Delivered
-4. Use **Print / Save as PDF** on preview
+1. **Client Dashboard** — scroll through the main content while keeping the **SOC Assistant** visible in the right column
+2. **SOC Workflow Funnel** — walk through Alerts Received → Triage → Investigation → Confirmed Incidents
+   - Change period (7 / 30 / 90 days) and point out trend indicators
+3. **SOC Assistant** — ask a suggested question, e.g. *"How is our SLA performance?"* or *"Summarize our SOC workflow funnel"*
+   - Show formatted response with metrics and bullets
+4. **Reports** — view published report only; use **Read Latest Report** CTA
+5. Walk through v2 sections: Service Activity, AI-Assisted Triage Oversight, Trust Metrics Summary, Value Delivered
+6. Use **Print / Save as PDF** on preview
 
-**Talking point:** *"The portal proves service value — no internal QA notes, no raw AI prompts."*
+**Talking point:** *"The portal proves service value — clients see workflow outcomes, can ask questions about their data, and never see internal QA or raw AI prompts."*
 
 ## Act 4: Integration — Microsoft Sentinel (4 min)
 
 1. Show `GET /integrations/sentinel/health`
-2. Post sample from `samples/sentinel-alert-payload.json`:
+2. **Admin Setup → Integrations** — show client ID mapping and integration event log
+3. Post sample from `samples/sentinel-alert-payload.json`:
 
 ```bash
 curl -X POST http://localhost:8001/integrations/sentinel/alerts \
@@ -64,12 +71,15 @@ curl -X POST http://localhost:8001/integrations/sentinel/alerts \
   -d @samples/sentinel-alert-payload.json
 ```
 
-3. Return to **Case Queue** — show new Sentinel-ingested case
+4. Return to **Case Queue** — show new Sentinel-ingested case
+5. Mention deduplication: replaying the same `source_alert_id` does not create a duplicate case
+6. Optional: reference `samples/sentinel-logic-app-workflow.json` for Azure Logic App deployment
 
-**Talking point:** *"Sentinel enriches and detects. TrustOps creates the case and manages analyst workflow."*
+**Talking point:** *"Sentinel enriches and detects. TrustOps creates the case, deduplicates replays, and manages analyst workflow."*
 
 ## Close
 
 - Recap: detect → enrich → manage → prove
 - Offer pilot deployment modes (see `docs/deployment.md`)
 - Reference Trust Calibration as ongoing operational metric
+- v0.2 adds client funnel visibility and interactive Q&A on top of published reports

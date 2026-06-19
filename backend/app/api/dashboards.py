@@ -1,6 +1,7 @@
+from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth.security import (
@@ -14,7 +15,9 @@ from app.auth.security import (
     require_roles,
 )
 from app.db.session import get_db
-from app.models import User
+from app.models import Client, User
+from app.schemas import ClientChatRequest, ClientChatResponse
+from app.services.client_chat_service import ClientChatService
 from app.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/dashboards", tags=["dashboards"])
@@ -39,34 +42,83 @@ def analyst_dashboard(
 @router.get("/client/{client_id}")
 def client_dashboard(
     client_id: UUID,
+    days: int = Query(30, ge=7, le=365),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     enforce_client_access(user, client_id)
     published_only = is_client_user(user)
-    return DashboardService(db).client_metrics(client_id, published_only=published_only)
+    return DashboardService(db).client_metrics(client_id, published_only=published_only, days=days)
+
+
+@router.post("/client/{client_id}/chat", response_model=ClientChatResponse)
+def client_soc_chat(
+    client_id: UUID,
+    payload: ClientChatRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    enforce_client_access(user, client_id)
+    if not payload.message.strip():
+        raise HTTPException(status_code=400, detail="Message is required")
+    try:
+        result = ClientChatService(db).ask(
+            client_id,
+            payload.message,
+            history=[m.model_dump() for m in payload.history],
+            period_days=payload.period_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ClientChatResponse(
+        reply=result["reply"],
+        client_id=client_id,
+        period_days=result["period_days"],
+    )
 
 
 @router.get("/executive")
 def executive_dashboard(
     client_id: UUID | None = None,
+    days: int = Query(30, ge=7, le=365),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     if is_client_user(user):
         if not user.client_id:
             raise HTTPException(status_code=403, detail="No client assigned")
-        return DashboardService(db).client_metrics(user.client_id, published_only=True)
+        return DashboardService(db).client_metrics(user.client_id, published_only=True, days=days)
     if client_id:
-        return DashboardService(db).client_metrics(client_id)
+        return DashboardService(db).client_metrics(client_id, days=days)
     return DashboardService(db).soc_manager_metrics(user.organization_id)
 
 
 @router.get("/trust-metrics")
 def trust_metrics_dashboard(
+    client_id: UUID | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    trend_weeks: int = Query(12, ge=4, le=52),
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
 ):
     from app.services.trust_metrics_service import TrustMetricsService
 
-    return TrustMetricsService(db).get_metrics(user.organization_id)
+    if client_id:
+        client = (
+            db.query(Client)
+            .filter(Client.id == client_id, Client.organization_id == user.organization_id)
+            .first()
+        )
+        if not client:
+            raise HTTPException(status_code=404, detail="client_id not found")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="start_date must be on or before end_date")
+
+    return TrustMetricsService(db).get_metrics(
+        user.organization_id,
+        client_id=client_id,
+        start_date=start_date,
+        end_date=end_date,
+        trend_weeks=trend_weeks,
+    )

@@ -143,6 +143,28 @@ export interface Report {
   created_at: string;
 }
 
+export interface SocManagerMetrics {
+  total_open_cases: number;
+  cases_by_priority: Record<string, number>;
+  cases_by_status: Record<string, number>;
+  sla_at_risk: number;
+  sla_breached: number;
+  avg_time_to_triage_minutes: number;
+  avg_time_to_disposition_minutes: number;
+  ai_acceptance_rate: number;
+  ai_override_rate: number;
+  qa_average_score: number;
+  analyst_workload: Record<string, number>;
+}
+
+export interface TrustMetricsWeeklyTrend {
+  week_start: string;
+  week_label: string;
+  decision_count: number;
+  acceptance_rate: number;
+  trust_calibration_score: number;
+}
+
 export interface TrustMetrics {
   ai_recommendation_count: number;
   ai_acceptance_rate: number;
@@ -173,6 +195,13 @@ export interface TrustMetrics {
   decision_reversal_rate_after_qa: number;
   qa_confirmed_override_accuracy: number;
   qa_review_count: number;
+  decision_count?: number;
+  filters?: {
+    client_id: string | null;
+    start_date: string | null;
+    end_date: string | null;
+  };
+  weekly_trends?: TrustMetricsWeeklyTrend[];
 }
 
 export interface AdminOverview {
@@ -193,6 +222,57 @@ export interface AdminOverview {
     has_cases: boolean;
     setup_complete: boolean;
   };
+}
+
+export interface WorkflowFunnelStage {
+  id: string;
+  label: string;
+  total: number;
+  prior_total?: number;
+  trend_pct?: number;
+  color: string;
+  breakdown: Array<{ label: string; count: number }>;
+}
+
+export interface WorkflowFunnel {
+  period_start: string;
+  period_end: string;
+  stages: WorkflowFunnelStage[];
+}
+
+export interface ClientDashboardMetrics {
+  open_cases: number;
+  closed_cases_this_month: number;
+  sla_performance: number;
+  notable_incidents: Array<{ title: string; severity: string; status: string }>;
+  cases_by_severity: Record<string, number>;
+  cases_by_disposition: Record<string, number>;
+  monthly_reports: Array<{
+    id: string;
+    title: string;
+    status: string;
+    period_start: string;
+    period_end: string;
+  }>;
+  latest_published_report_id?: string | null;
+  workflow_funnel?: WorkflowFunnel;
+  period_days?: number;
+}
+
+export interface IntegrationEvent {
+  id: string;
+  organization_id: string;
+  client_id: string | null;
+  integration_source: string;
+  event_type: string;
+  status: string;
+  source_system: string | null;
+  source_alert_id: string | null;
+  case_id: string | null;
+  case_number: string | null;
+  error_message: string | null;
+  payload_summary: string | null;
+  created_at: string;
 }
 
 export interface SLAPolicy {

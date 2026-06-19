@@ -2,6 +2,7 @@
 
 import uuid
 from collections import Counter, defaultdict
+from datetime import date, datetime, time, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -28,32 +29,183 @@ def _categorize_override(reason: str | None) -> str:
     return "Other"
 
 
+def _week_start(value: datetime | date) -> date:
+    d = value.date() if isinstance(value, datetime) else value
+    return d - timedelta(days=d.weekday())
+
+
+def _start_of_day(d: date) -> datetime:
+    return datetime.combine(d, time.min, tzinfo=timezone.utc)
+
+
+def _end_of_day_exclusive(d: date) -> datetime:
+    return datetime.combine(d + timedelta(days=1), time.min, tzinfo=timezone.utc)
+
+
 class TrustMetricsService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_metrics(self, organization_id: uuid.UUID) -> dict:
-        decisions = (
+    def get_metrics(
+        self,
+        organization_id: uuid.UUID,
+        *,
+        client_id: uuid.UUID | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        trend_weeks: int = 12,
+    ) -> dict:
+        decisions = self._query_decisions(organization_id, client_id, start_date, end_date).all()
+        ai_recs = self._query_ai_recommendations(organization_id, client_id, start_date, end_date).all()
+        case_ids = {d.case_id for d in decisions} | {r.case_id for r in ai_recs}
+        cases = (
+            self.db.query(Case).filter(Case.id.in_(case_ids)).all()
+            if case_ids
+            else self.db.query(Case).filter(Case.organization_id == organization_id).all()
+        )
+        if client_id:
+            cases = [c for c in cases if c.client_id == client_id]
+        case_by_id = {c.id: c for c in cases}
+
+        qa_reviews = self._query_qa_reviews(organization_id, client_id, start_date, end_date).all()
+
+        metrics = self._compute_metrics(decisions, ai_recs, case_by_id, qa_reviews)
+        metrics["decision_count"] = len(decisions)
+        metrics["filters"] = {
+            "client_id": str(client_id) if client_id else None,
+            "start_date": start_date.isoformat() if start_date else None,
+            "end_date": end_date.isoformat() if end_date else None,
+        }
+        metrics["weekly_trends"] = self._weekly_trends(
+            organization_id,
+            client_id=client_id,
+            weeks=trend_weeks,
+            end_date=end_date or date.today(),
+        )
+        return metrics
+
+    def _query_decisions(
+        self,
+        organization_id: uuid.UUID,
+        client_id: uuid.UUID | None,
+        start_date: date | None,
+        end_date: date | None,
+    ):
+        q = (
             self.db.query(AnalystDecision)
             .join(Case)
             .filter(Case.organization_id == organization_id)
-            .all()
         )
-        ai_recs = (
+        if client_id:
+            q = q.filter(Case.client_id == client_id)
+        if start_date:
+            q = q.filter(AnalystDecision.created_at >= _start_of_day(start_date))
+        if end_date:
+            q = q.filter(AnalystDecision.created_at < _end_of_day_exclusive(end_date))
+        return q
+
+    def _query_ai_recommendations(
+        self,
+        organization_id: uuid.UUID,
+        client_id: uuid.UUID | None,
+        start_date: date | None,
+        end_date: date | None,
+    ):
+        q = (
             self.db.query(AIRecommendation)
             .join(Case)
             .filter(Case.organization_id == organization_id)
-            .all()
         )
-        ai_by_id = {r.id: r for r in ai_recs}
-        case_by_id = {c.id: c for c in self.db.query(Case).filter(Case.organization_id == organization_id).all()}
+        if client_id:
+            q = q.filter(Case.client_id == client_id)
+        if start_date:
+            q = q.filter(AIRecommendation.created_at >= _start_of_day(start_date))
+        if end_date:
+            q = q.filter(AIRecommendation.created_at < _end_of_day_exclusive(end_date))
+        return q
 
+    def _query_qa_reviews(
+        self,
+        organization_id: uuid.UUID,
+        client_id: uuid.UUID | None,
+        start_date: date | None,
+        end_date: date | None,
+    ):
+        q = self.db.query(QAReview).join(Case).filter(Case.organization_id == organization_id)
+        if client_id:
+            q = q.filter(Case.client_id == client_id)
+        if start_date:
+            q = q.filter(QAReview.created_at >= _start_of_day(start_date))
+        if end_date:
+            q = q.filter(QAReview.created_at < _end_of_day_exclusive(end_date))
+        return q
+
+    def _compute_metrics(
+        self,
+        decisions: list[AnalystDecision],
+        ai_recs: list[AIRecommendation],
+        case_by_id: dict[uuid.UUID, Case],
+        qa_reviews: list[QAReview],
+    ) -> dict:
+        ai_by_id = {r.id: r for r in ai_recs}
         total = len(decisions)
         base = self._base_metrics(decisions, ai_recs, total)
-        v2 = self._v2_metrics(decisions, ai_by_id, case_by_id, organization_id)
+        v2 = self._v2_metrics(decisions, ai_by_id, case_by_id, qa_reviews)
         calibration = self._calibration_score(decisions, ai_by_id, v2)
-
         return {**base, **v2, **calibration}
+
+    def _weekly_trends(
+        self,
+        organization_id: uuid.UUID,
+        *,
+        client_id: uuid.UUID | None,
+        weeks: int,
+        end_date: date,
+    ) -> list[dict]:
+        start_date = end_date - timedelta(weeks=weeks)
+        decisions = self._query_decisions(organization_id, client_id, start_date, end_date).all()
+        ai_recs = self._query_ai_recommendations(organization_id, client_id, start_date, end_date).all()
+        case_ids = {d.case_id for d in decisions}
+        cases = (
+            self.db.query(Case).filter(Case.id.in_(case_ids)).all()
+            if case_ids
+            else []
+        )
+        case_by_id = {c.id: c for c in cases}
+        ai_by_id = {r.id: r for r in ai_recs}
+        qa_reviews = self._query_qa_reviews(organization_id, client_id, start_date, end_date).all()
+        qa_by_case = {q.case_id: q for q in qa_reviews}
+
+        by_week: dict[date, list[AnalystDecision]] = defaultdict(list)
+        for d in decisions:
+            by_week[_week_start(d.created_at)].append(d)
+
+        trends: list[dict] = []
+        cursor = _week_start(start_date)
+        end_week = _week_start(end_date)
+        while cursor <= end_week:
+            week_decisions = by_week.get(cursor, [])
+            week_qa = [qa_by_case[d.case_id] for d in week_decisions if d.case_id in qa_by_case]
+            if week_decisions:
+                v2 = self._v2_metrics(week_decisions, ai_by_id, case_by_id, week_qa)
+                calibration = self._calibration_score(week_decisions, ai_by_id, v2)
+                accept = sum(1 for d in week_decisions if d.ai_action == "Accepted")
+                acceptance_rate = round(accept / len(week_decisions) * 100, 1)
+            else:
+                acceptance_rate = 0
+                calibration = {"trust_calibration_score": 0}
+
+            trends.append(
+                {
+                    "week_start": cursor.isoformat(),
+                    "week_label": cursor.strftime("%b %d"),
+                    "decision_count": len(week_decisions),
+                    "acceptance_rate": acceptance_rate,
+                    "trust_calibration_score": calibration["trust_calibration_score"],
+                }
+            )
+            cursor += timedelta(weeks=1)
+        return trends
 
     def _base_metrics(self, decisions: list, ai_recs: list, total: int) -> dict:
         if total == 0:
@@ -116,7 +268,7 @@ class TrustMetricsService:
         decisions: list,
         ai_by_id: dict,
         case_by_id: dict,
-        organization_id: uuid.UUID,
+        qa_reviews: list[QAReview],
     ) -> dict:
         high_conf_accepted = 0
         high_conf_rejected = 0
@@ -152,12 +304,6 @@ class TrustMetricsService:
             if d.ai_action in ("Modified", "Rejected"):
                 override_categories[_categorize_override(d.override_reason)] += 1
 
-        qa_reviews = (
-            self.db.query(QAReview)
-            .join(Case)
-            .filter(Case.organization_id == organization_id)
-            .all()
-        )
         reversals = sum(1 for q in qa_reviews if q.disposition_correct is False)
         qa_total = len(qa_reviews) or 1
 

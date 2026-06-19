@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
     webhook_api_key: str = "dev-webhook-key-change-in-production"
     sentinel_api_key: str = ""
-    app_version: str = "0.1.0-pilot"
+    app_version: str = "0.2.0-pilot"
     deployment_mode: str = "local-demo"
 
     class Config:

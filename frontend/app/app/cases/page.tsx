@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { Case, Client } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,19 @@ export default function CasesPage() {
     assigned_to_me: false, sla_at_risk: false, sla_breached: false, search: '',
   });
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const slaAtRisk = searchParams.get('sla_at_risk') === 'true';
+    const slaBreached = searchParams.get('sla_breached') === 'true';
+    if (slaAtRisk || slaBreached) {
+      setFilters((prev) => ({
+        ...prev,
+        sla_at_risk: slaAtRisk,
+        sla_breached: slaBreached,
+      }));
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);

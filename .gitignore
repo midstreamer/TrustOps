@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 frontend/.next/
+frontend/.next-dev/
+frontend/.next-build/
 frontend/out/
 
 # Python

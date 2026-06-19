@@ -1,0 +1,80 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "TrustOps Microsoft Sentinel alert forwarding workflow. Replace placeholders before deploying.",
+    "trustops_version": "0.2.0"
+  },
+  "parameters": {
+    "TrustOpsApiUrl": {
+      "type": "string",
+      "defaultValue": "https://trustops.yourdomain.com",
+      "metadata": { "description": "TrustOps API base URL (no trailing slash)" }
+    },
+    "TrustOpsWebhookKey": {
+      "type": "securestring",
+      "metadata": { "description": "X-TrustOps-Webhook-Key value from TrustOps .env" }
+    },
+    "TrustOpsClientId": {
+      "type": "string",
+      "metadata": { "description": "Managed client UUID from Admin Setup → Clients tab" }
+    }
+  },
+  "triggers": {
+    "When_a_Sentinel_alert_is_created": {
+      "type": "ApiConnectionWebhook",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+          }
+        },
+        "body": {
+          "callback_url": "@{listCallbackUrl()}"
+        },
+        "path": "/subscribe"
+      }
+    }
+  },
+  "actions": {
+    "HTTP_Post_alert_to_TrustOps": {
+      "type": "Http",
+      "runAfter": {},
+      "inputs": {
+        "method": "POST",
+        "uri": "@{parameters('TrustOpsApiUrl')}/integrations/sentinel/alerts",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-TrustOps-Webhook-Key": "@parameters('TrustOpsWebhookKey')"
+        },
+        "body": {
+          "client_id": "@parameters('TrustOpsClientId')",
+          "displayName": "@{triggerBody()?['Properties']?['AlertDisplayName']}",
+          "description": "@{triggerBody()?['Properties']?['Description']}",
+          "severity": "@{triggerBody()?['Properties']?['Severity']}",
+          "systemAlertId": "@{triggerBody()?['Properties']?['SystemAlertId']}",
+          "tactics": "@triggerBody()?['Properties']?['Tactics']",
+          "techniques": "@triggerBody()?['Properties']?['Techniques']",
+          "endTimeUtc": "@{triggerBody()?['Properties']?['EndTimeUtc']}"
+        }
+      }
+    },
+    "Condition_check_duplicate": {
+      "type": "If",
+      "runAfter": { "HTTP_Post_alert_to_TrustOps": ["Succeeded"] },
+      "expression": {
+        "equals": ["@body('HTTP_Post_alert_to_TrustOps')?['ingestion_status']", "duplicate"]
+      },
+      "actions": {
+        "Terminate_duplicate": {
+          "type": "Terminate",
+          "inputs": { "runStatus": "Succeeded" }
+        }
+      },
+      "else": {
+        "actions": {}
+      }
+    }
+  },
+  "outputs": {}
+}

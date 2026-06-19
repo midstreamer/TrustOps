@@ -35,7 +35,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/trustops
 JWT_SECRET=<random-256-bit-secret>
 WEBHOOK_API_KEY=<random-api-key>
 DEPLOYMENT_MODE=pilot-single-tenant
-APP_VERSION=0.1.0-pilot
+APP_VERSION=0.2.0-pilot
 CORS_ORIGINS=https://trustops.yourdomain.com
 ```
 
@@ -79,7 +79,7 @@ See `.env.example` for full list. Critical production variables:
 | `CORS_ORIGINS` | Yes | Frontend origin(s) |
 | `OPENAI_API_KEY` | No | Mock AI used when unset |
 | `DEPLOYMENT_MODE` | No | Default: `local-demo` |
-| `APP_VERSION` | No | Default: `0.1.0-pilot` |
+| `APP_VERSION` | No | Default: `0.2.0-pilot` |
 
 ## Monitoring
 

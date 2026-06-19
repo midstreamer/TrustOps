@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Card, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, FileText } from 'lucide-react';
 
 export default function NewReportPage() {
   const router = useRouter();
@@ -19,7 +22,10 @@ export default function NewReportPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api<Client[]>('/clients').then((c) => { setClients(c); if (c[0]) setForm((f) => ({ ...f, client_id: c[0].id })); });
+    api<Client[]>('/clients').then((c) => {
+      setClients(c);
+      if (c[0]) setForm((f) => ({ ...f, client_id: c[0].id }));
+    });
   }, []);
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -37,24 +43,43 @@ export default function NewReportPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-bold">Generate Monthly Report</h1>
-      <form onSubmit={handleGenerate} className="space-y-4 rounded-xl border border-border bg-card p-6">
-        <div>
-          <label className="text-sm text-muted">Client</label>
-          <Select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} required>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
+      <Link href="/app/reports" className="mb-4 inline-flex items-center text-sm text-muted hover:text-foreground">
+        <ArrowLeft className="mr-1.5 h-4 w-4" />
+        Back to Reports
+      </Link>
+
+      <h1 className="mb-2 text-2xl font-bold">Generate Monthly Report</h1>
+      <p className="mb-6 text-sm text-muted">
+        Create a draft client value report from case activity, SLA data, and trust metrics for the selected period.
+      </p>
+
+      <Card>
+        <div className="mb-4 flex items-center gap-2">
+          <FileText className="h-5 w-5 text-primary" />
+          <CardTitle>Report Parameters</CardTitle>
         </div>
-        <div>
-          <label className="text-sm text-muted">Period Start</label>
-          <Input type="date" value={form.reporting_period_start} onChange={(e) => setForm({ ...form, reporting_period_start: e.target.value })} required />
-        </div>
-        <div>
-          <label className="text-sm text-muted">Period End</label>
-          <Input type="date" value={form.reporting_period_end} onChange={(e) => setForm({ ...form, reporting_period_end: e.target.value })} required />
-        </div>
-        <Button type="submit" disabled={loading}>{loading ? 'Generating...' : 'Generate Draft'}</Button>
-      </form>
+        <form onSubmit={handleGenerate} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs text-muted">Client *</label>
+            <Select value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} required>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted">Period start *</label>
+              <Input type="date" value={form.reporting_period_start} onChange={(e) => setForm({ ...form, reporting_period_start: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted">Period end *</label>
+              <Input type="date" value={form.reporting_period_end} onChange={(e) => setForm({ ...form, reporting_period_end: e.target.value })} required />
+            </div>
+          </div>
+          <Button type="submit" disabled={loading || !form.client_id}>
+            {loading ? 'Generating…' : 'Generate Draft Report'}
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }
