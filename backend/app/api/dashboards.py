@@ -16,7 +16,7 @@ from app.auth.security import (
 )
 from app.db.session import get_db
 from app.models import Client, User
-from app.schemas import ClientChatRequest, ClientChatResponse
+from app.schemas import ClientChatRequest, ClientChatResponse, TrustMetricsDrilldownResponse
 from app.services.client_chat_service import ClientChatService
 from app.services.dashboard_service import DashboardService
 
@@ -122,3 +122,36 @@ def trust_metrics_dashboard(
         end_date=end_date,
         trend_weeks=trend_weeks,
     )
+
+
+@router.get("/trust-metrics/drilldown", response_model=TrustMetricsDrilldownResponse)
+def trust_metrics_drilldown(
+    type: str = Query(..., alias="type"),
+    client_id: UUID | None = None,
+    analyst_user_id: UUID | None = None,
+    severity: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
+):
+    from app.services.trust_metrics_service import TrustMetricsService
+
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="start_date must be on or before end_date")
+    try:
+        return TrustMetricsService(db).drilldown(
+            user.organization_id,
+            type,
+            client_id=client_id,
+            analyst_user_id=analyst_user_id,
+            severity=severity,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

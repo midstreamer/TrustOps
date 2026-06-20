@@ -51,7 +51,13 @@ def main() -> int:
     check("API ready", r_ready.status_code == 200 and r_ready.json().get("status") == "ready", r_ready.text)
 
     r_ver = httpx.get(f"{BASE}/version")
-    check("API version", r_ver.status_code == 200 and "version" in r_ver.json(), r_ver.text)
+    ver_body = r_ver.json() if r_ver.status_code == 200 else {}
+    check("API version", r_ver.status_code == 200 and "version" in ver_body, r_ver.text)
+    check(
+        "API version is operational pilot",
+        ver_body.get("version") == "0.2.0-operational-pilot",
+        str(ver_body.get("version")),
+    )
 
     r_sentinel = httpx.get(f"{BASE}/integrations/sentinel/health")
     check("Sentinel integration health", r_sentinel.status_code == 200, r_sentinel.text)
@@ -148,6 +154,26 @@ def main() -> int:
     # 11-13: Manager flow
     print("\n[Manager flow]")
     mgr_token = login("manager@trustops.demo")
+
+    print("\n[Operational pilot]")
+    int_status = api("GET", "/integrations/status", mgr_token)
+    check("Integration status", int_status.status_code == 200, int_status.text[:200])
+    if int_status.status_code == 200:
+        check("Integration status has Sentinel", any(i.get("integration_name") == "Microsoft Sentinel" for i in int_status.json()))
+
+    audit = api("GET", "/audit-logs?limit=5", mgr_token)
+    check("Audit logs", audit.status_code == 200, audit.text[:200])
+
+    mgr_cases = api("GET", "/cases", mgr_token).json()
+    if mgr_cases:
+        check("Case quality on list", mgr_cases[0].get("quality") is not None, "missing quality field")
+
+    drill = api("GET", "/dashboards/trust-metrics/drilldown?type=analyst_override", mgr_token)
+    check("Trust metrics drilldown", drill.status_code == 200, drill.text[:200])
+
+    analyst_audit = api("GET", "/audit-logs", analyst_token)
+    check("Analyst cannot access audit logs", analyst_audit.status_code in (401, 403), str(analyst_audit.status_code))
+
     dash = api("GET", "/dashboards/soc-manager", mgr_token)
     check("Manager dashboard", dash.status_code == 200, dash.text[:200])
     if dash.status_code == 200:

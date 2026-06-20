@@ -15,12 +15,14 @@ export function KpiCard({
   sub,
   icon: Icon,
   tone = 'default',
+  onClick,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
   tone?: KpiTone;
+  onClick?: () => void;
 }) {
   const toneStyles: Record<KpiTone, string> = {
     default: 'border-border',
@@ -38,7 +40,15 @@ export function KpiCard({
   };
 
   return (
-    <Card className={cn('relative overflow-hidden', toneStyles[tone])}>
+    <Card
+      className={cn(
+        'relative overflow-hidden',
+        toneStyles[tone],
+        onClick && 'cursor-pointer transition-colors hover:border-primary/50',
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>

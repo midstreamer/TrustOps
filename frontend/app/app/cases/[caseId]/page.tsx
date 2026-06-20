@@ -16,6 +16,7 @@ import {
   SeverityBadge, PriorityBadge, SlaBadge, AiConfidenceBadge,
   AgreementBadge, AiActionBadge, PanelHeader,
 } from '@/components/ui/badges';
+import { QualityCard } from '@/components/dashboard/quality-badge';
 import { DISPOSITIONS, PRIORITIES, AI_ACTIONS } from '@/lib/utils';
 import { Sparkles, ClipboardCheck } from 'lucide-react';
 
@@ -166,6 +167,10 @@ export default function CaseDetailPage() {
       </div>
 
       {error && <ErrorState message={error} />}
+
+      {caseData.quality && (
+        <QualityCard quality={caseData.quality} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         {/* LEFT: Alert, Evidence, Timeline, SLA */}

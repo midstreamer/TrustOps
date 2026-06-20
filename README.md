@@ -4,22 +4,29 @@
 
 TrustOps is a human-in-the-loop SOC case management platform for SOCaaS/MDR providers. It is the operational system of record for managed SOC work — not a SIEM, SOAR, EDR, or XDR replacement.
 
-**Current release:** `v0.2.0-pilot` — see [CHANGELOG.md](CHANGELOG.md) and [v0.2 release notes](docs/releases/v0.2.0-pilot.md)
+**Current release:** `v0.2.0-operational-pilot` — see [CHANGELOG.md](CHANGELOG.md) and [release notes](docs/releases/v0.2.0-operational-pilot.md)
 
 ## Screenshots
 
-> Placeholder — add screenshots of Case Workspace, Client Dashboard funnel, and Client Report preview for your deployment.
+Capture required — see [docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
 
-| Case Workspace | Client Dashboard | Client Report |
-|----------------|------------------|---------------|
-| _screenshot_ | _screenshot_ | _screenshot_ |
+| Case Workspace | Trust Metrics | Integration Health |
+|----------------|---------------|-------------------|
+| ![Case workspace](docs/assets/screenshots/case-workspace.png) | ![Trust metrics](docs/assets/screenshots/trust-metrics.png) | ![Integrations](docs/assets/screenshots/integration-health.png) |
+
+| Client Report | Audit Log |
+|---------------|-----------|
+| ![Client report](docs/assets/screenshots/client-report.png) | ![Audit log](docs/assets/screenshots/audit-log.png) |
 
 ## Product Capabilities
 
 - Multi-client organization management with tenant isolation
 - Security case lifecycle and three-panel analyst workspace
 - AI-assisted triage with human-AI agreement tracking
-- Trust Metrics v2 with Trust Calibration Score, client/date filters, and weekly trends
+- Trust Metrics v2 with calibration score, filters, weekly trends, and **case drilldown**
+- **Integration health dashboard** (Sentinel + webhook status)
+- **Audit log viewer** for SOC managers and platform admins
+- **Case quality score** and flags for incomplete or risky cases
 - SLA policy configuration and event tracking
 - QA reviews for SOC managers
 - Client Value Report v2 with print/PDF export and AI regeneration
@@ -79,20 +86,24 @@ The dev server writes to `frontend/.next-dev`. Production builds use `frontend/.
 | viewer@apex.demo | Client Viewer (Apex) | TrustOps123! |
 | admin@trustops.demo | Platform Admin | TrustOps123! |
 
-## Buyer Demo (20 min)
+## Buyer Demo (22 min)
 
 Start with **CASE-GOLDEN** (Apex Energy). Full script:
 
-- [docs/demo-script.md](docs/demo-script.md) — step-by-step demo (updated for v0.2 client portal)
+- [docs/demo-script.md](docs/demo-script.md) — step-by-step demo (updated for v0.2)
 - [docs/buyer-demo-narrative.md](docs/buyer-demo-narrative.md) — positioning
-- [docs/releases/v0.2.0-pilot.md](docs/releases/v0.2.0-pilot.md) — v0.2 release notes
+- [docs/product-brief.md](docs/product-brief.md) — buyer-facing summary
+- [docs/pilot-success-scorecard.md](docs/pilot-success-scorecard.md) — 30-day KPIs
+- [docs/known-limitations.md](docs/known-limitations.md) — transparent pilot scope
+- [docs/releases/v0.2.0-operational-pilot.md](docs/releases/v0.2.0-operational-pilot.md) — release notes
 - [docs/demo-personas.md](docs/demo-personas.md) — personas
 - [docs/demo-data-dictionary.md](docs/demo-data-dictionary.md) — seed data reference
 
 ## Pilot Deployment
 
-- [docs/deployment.md](docs/deployment.md) — local-demo, pilot-single-tenant, pilot-multi-client
 - [docs/pilot-setup.md](docs/pilot-setup.md) — step-by-step pilot bootstrap
+- [docs/pilot-launch-runbook.md](docs/pilot-launch-runbook.md) — **30-day pilot launch runbook** (week-by-week)
+- [docs/deployment.md](docs/deployment.md) — local-demo, pilot-single-tenant, pilot-multi-client
 - [docs/security-controls.md](docs/security-controls.md) — security model
 
 **CLI setup:**
@@ -134,10 +145,12 @@ Query params on `GET /dashboards/trust-metrics`: `client_id`, `start_date`, `end
 ## Tests & Validation
 
 ```bash
-cd backend && pytest tests/ -v
+cd backend && pytest tests/ -v          # 59 tests
 API_URL=http://localhost:8001 python scripts/validate_demo.py
 cd frontend && npm run build:check
 ```
+
+Validates health, golden path, integration status, audit logs, case quality, trust metrics drilldown, and version `0.2.0-operational-pilot`.
 
 ## Environment Variables
 

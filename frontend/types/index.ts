@@ -70,6 +70,76 @@ export interface Case {
   ai_confidence: number | null;
   alerts: Alert[];
   sla_events: SLAEvent[];
+  quality?: CaseQuality | null;
+}
+
+export interface CaseQuality {
+  case_id?: string;
+  case_number?: string;
+  quality_score: number;
+  quality_grade: string;
+  flags: string[];
+  score_breakdown: Record<string, number>;
+}
+
+export interface IntegrationStatus {
+  integration_key: string;
+  integration_name: string;
+  source_system: string;
+  status: string;
+  last_alert_received_at: string | null;
+  alerts_received_last_24h: number;
+  failed_payloads_last_24h: number;
+  last_error: string | null;
+  api_key_configured: boolean;
+  client_mapping_status: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  event_type: string;
+  event_type_label: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  client_id: string | null;
+  client_name: string | null;
+  case_id: string | null;
+  case_number: string | null;
+  user_id: string | null;
+  user_name: string | null;
+  created_at: string;
+  previous_value_json: Record<string, unknown> | null;
+  new_value_json: Record<string, unknown> | null;
+}
+
+export interface AuditLogList {
+  items: AuditLogItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface TrustMetricsDrilldownItem {
+  case_id: string;
+  case_number: string;
+  client_name: string | null;
+  title: string;
+  severity: string;
+  priority: string | null;
+  ai_confidence: number | null;
+  analyst_confidence: number;
+  ai_action: string;
+  human_ai_agreement: boolean | null;
+  qa_score: number | null;
+  created_at: string;
+}
+
+export interface TrustMetricsDrilldown {
+  type: string;
+  items: TrustMetricsDrilldownItem[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface AIRecommendation {
@@ -155,6 +225,8 @@ export interface SocManagerMetrics {
   ai_override_rate: number;
   qa_average_score: number;
   analyst_workload: Record<string, number>;
+  low_quality_cases?: number;
+  needs_qa_cases?: number;
 }
 
 export interface TrustMetricsWeeklyTrend {

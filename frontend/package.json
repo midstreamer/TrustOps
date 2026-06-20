@@ -1,6 +1,6 @@
 {
   "name": "trustops-frontend",
-  "version": "0.2.0",
+  "version": "0.2.0-operational-pilot",
   "private": true,
   "scripts": {
     "dev": "NEXT_DIST_DIR=.next-dev next dev -p 3001",

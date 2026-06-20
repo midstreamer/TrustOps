@@ -150,6 +150,9 @@ class CaseService:
                 joinedload(Case.assigned_to),
                 joinedload(Case.sla_events),
                 joinedload(Case.ai_recommendations),
+                joinedload(Case.evidence),
+                joinedload(Case.analyst_decisions),
+                joinedload(Case.qa_reviews),
             )
             .filter(Case.organization_id == organization_id)
         )

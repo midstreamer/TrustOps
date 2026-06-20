@@ -7,8 +7,9 @@ from app.auth.security import MANAGER_ROLES, require_roles
 from app.core.config import settings
 from app.db.session import get_db
 from app.models import Client, User
-from app.schemas import IntegrationEventResponse, SentinelAlertPayload, WebhookAlertPayload, WebhookAlertResponse
+from app.schemas import IntegrationEventResponse, IntegrationStatusResponse, SentinelAlertPayload, WebhookAlertPayload, WebhookAlertResponse
 from app.services.integration_log_service import IntegrationLogService
+from app.services.integration_status_service import IntegrationStatusService
 from app.services.sentinel_service import SentinelAlertService
 from app.services.webhook_service import WebhookAlertService
 
@@ -59,6 +60,27 @@ def list_integration_logs(
         limit=limit,
     )
     return events
+
+
+@router.get("/status", response_model=list[IntegrationStatusResponse])
+def integration_status(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("Platform Admin", *MANAGER_ROLES)),
+):
+    """Integration health summary for SOC managers."""
+    return IntegrationStatusService(db).list_status(user.organization_id)
+
+
+@router.get("/status/{integration_key}", response_model=IntegrationStatusResponse)
+def integration_status_detail(
+    integration_key: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("Platform Admin", *MANAGER_ROLES)),
+):
+    result = IntegrationStatusService(db).get_status(user.organization_id, integration_key)
+    if not result:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return result
 
 
 @router.post("/webhook/alerts", response_model=WebhookAlertResponse)

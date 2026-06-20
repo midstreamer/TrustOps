@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SeverityBadge, SlaBadge, AiConfidenceBadge } from '@/components/ui/badges';
+import { QualityBadge } from '@/components/dashboard/quality-badge';
 import { LoadingState, EmptyState, ErrorState } from '@/components/ui/states';
 import { SEVERITIES, PRIORITIES, STATUSES } from '@/lib/utils';
 import { Plus, Upload, Search } from 'lucide-react';
@@ -20,7 +21,7 @@ export default function CasesPage() {
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     client_id: '', severity: '', priority: '', status: '',
-    assigned_to_me: false, sla_at_risk: false, sla_breached: false, search: '',
+    assigned_to_me: false, sla_at_risk: false, sla_breached: false, low_quality: false, search: '',
   });
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,11 +29,13 @@ export default function CasesPage() {
   useEffect(() => {
     const slaAtRisk = searchParams.get('sla_at_risk') === 'true';
     const slaBreached = searchParams.get('sla_breached') === 'true';
-    if (slaAtRisk || slaBreached) {
+    const lowQuality = searchParams.get('low_quality') === 'true';
+    if (slaAtRisk || slaBreached || lowQuality) {
       setFilters((prev) => ({
         ...prev,
         sla_at_risk: slaAtRisk,
         sla_breached: slaBreached,
+        low_quality: lowQuality,
       }));
     }
   }, [searchParams]);
@@ -49,6 +52,7 @@ export default function CasesPage() {
       if (filters.assigned_to_me) params.set('assigned_to_me', 'true');
       if (filters.sla_at_risk) params.set('sla_at_risk', 'true');
       if (filters.sla_breached) params.set('sla_breached', 'true');
+      if (filters.low_quality) params.set('low_quality', 'true');
       if (filters.search) params.set('search', filters.search);
       const [casesData, clientsData] = await Promise.all([
         api<Case[]>(`/cases?${params}`),
@@ -127,7 +131,11 @@ export default function CasesPage() {
           <input type="checkbox" checked={filters.sla_breached} onChange={(e) => setFilters({ ...filters, sla_breached: e.target.checked })} />
           SLA Breached
         </label>
-        <div className="relative">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={filters.low_quality} onChange={(e) => setFilters({ ...filters, low_quality: e.target.checked })} />
+          Low Quality
+        </label>
+        <div className="relative col-span-2 md:col-span-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
           <Input className="pl-9" placeholder="Search..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
         </div>
@@ -139,7 +147,7 @@ export default function CasesPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-card">
             <tr>
-              {['Case Number', 'Client', 'Title', 'Severity', 'Priority', 'Status', 'Assigned Analyst', 'SLA Status', 'AI Confidence', 'Created', 'Updated'].map((h) => (
+              {['Case Number', 'Client', 'Title', 'Severity', 'Quality', 'Priority', 'Status', 'Assigned Analyst', 'SLA Status', 'AI Confidence', 'Created'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted">{h}</th>
               ))}
             </tr>
@@ -155,13 +163,13 @@ export default function CasesPage() {
                 <td className="px-4 py-3">{c.client_name}</td>
                 <td className="px-4 py-3 max-w-xs truncate">{c.title}</td>
                 <td className="px-4 py-3"><SeverityBadge severity={c.severity} /></td>
+                <td className="px-4 py-3">{c.quality ? <QualityBadge quality={c.quality} compact /> : '—'}</td>
                 <td className="px-4 py-3">{c.priority || '—'}</td>
                 <td className="px-4 py-3">{c.status}</td>
                 <td className="px-4 py-3">{c.assigned_to_name || '—'}</td>
                 <td className="px-4 py-3"><SlaBadge status={c.sla_status} /></td>
                 <td className="px-4 py-3"><AiConfidenceBadge score={c.ai_confidence} /></td>
                 <td className="px-4 py-3 text-muted">{new Date(c.created_at).toLocaleDateString()}</td>
-                <td className="px-4 py-3 text-muted">{new Date(c.updated_at).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>

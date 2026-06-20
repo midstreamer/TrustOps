@@ -2,9 +2,21 @@
 
 import { cn } from '@/lib/utils';
 
-export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
+export function Card({
+  className,
+  children,
+  onClick,
+  role,
+}: {
+  className?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+  role?: string;
+}) {
   return (
-    <div className={cn('rounded-xl border border-border bg-card p-4', className)}>{children}</div>
+    <div className={cn('rounded-xl border border-border bg-card p-4', className)} onClick={onClick} role={role}>
+      {children}
+    </div>
   );
 }
 

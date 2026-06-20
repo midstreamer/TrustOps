@@ -11,7 +11,7 @@ import { LoadingState, ErrorState, EmptyState } from '@/components/ui/states';
 import {
   CHART_COLORS, ComponentBar, KpiCard, SectionHeader, tooltipStyle,
 } from '@/components/dashboard/kpi-card';
-import type { Client, TrustMetrics } from '@/types';
+import type { Client, TrustMetrics, TrustMetricsDrilldown } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -38,6 +38,24 @@ export default function TrustMetricsPage() {
   const [clientId, setClientId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [drilldown, setDrilldown] = useState<TrustMetricsDrilldown | null>(null);
+  const [drilldownLoading, setDrilldownLoading] = useState(false);
+
+  const openDrilldown = async (type: string) => {
+    setDrilldownLoading(true);
+    try {
+      const params = new URLSearchParams({ type });
+      if (clientId) params.set('client_id', clientId);
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
+      const data = await api<TrustMetricsDrilldown>(`/dashboards/trust-metrics/drilldown?${params}`);
+      setDrilldown(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDrilldownLoading(false);
+    }
+  };
 
   useEffect(() => {
     api<Client[]>('/clients').then(setClients).catch(console.error);
@@ -283,9 +301,10 @@ export default function TrustMetricsPage() {
         <KpiCard
           label="Human-AI Agreement"
           value={`${metrics.human_ai_agreement_rate}%`}
-          sub="Disposition aligned"
+          sub="Click to view disagreement cases"
           icon={Scale}
           tone={metrics.human_ai_agreement_rate >= 75 ? 'success' : 'warning'}
+          onClick={() => openDrilldown('human_ai_disagreement')}
         />
         <KpiCard
           label="Modification Rate"
@@ -297,9 +316,10 @@ export default function TrustMetricsPage() {
         <KpiCard
           label="Override Count"
           value={metrics.override_count}
-          sub={`${metrics.ai_rejection_rate}% rejected`}
+          sub={`${metrics.ai_rejection_rate}% rejected — click to drill down`}
           icon={XCircle}
           tone={metrics.override_count > 0 ? 'warning' : 'success'}
+          onClick={() => openDrilldown('analyst_override')}
         />
       </div>
 
@@ -315,9 +335,10 @@ export default function TrustMetricsPage() {
         <KpiCard
           label="High-Conf Rejected"
           value={metrics.ai_high_confidence_rejected}
-          sub="AI ≥80% but overridden"
+          sub="AI ≥80% but overridden — click to drill down"
           icon={XCircle}
           tone={metrics.ai_high_confidence_rejected > 0 ? 'warning' : 'default'}
+          onClick={() => openDrilldown('high_confidence_ai_rejected')}
         />
         <KpiCard
           label="Low-Conf Escalations"
@@ -338,9 +359,10 @@ export default function TrustMetricsPage() {
         <KpiCard
           label="Reversal Rate"
           value={`${metrics.decision_reversal_rate_after_qa}%`}
-          sub="Disposition corrected in QA"
+          sub="Click to view QA-reversed cases"
           icon={XCircle}
           tone={metrics.decision_reversal_rate_after_qa > 15 ? 'warning' : 'default'}
+          onClick={() => openDrilldown('qa_reversed')}
         />
         <KpiCard
           label="Override Accuracy"
@@ -466,6 +488,55 @@ export default function TrustMetricsPage() {
           )}
         </Card>
       </div>
+
+      {(drilldown || drilldownLoading) && (
+        <Card className="mt-6 border-primary/30">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Metric Drilldown</CardTitle>
+              <p className="mt-1 text-sm text-muted">
+                These cases are driving this metric. {drilldown ? `${drilldown.total} total` : 'Loading…'}
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => setDrilldown(null)}>Close</Button>
+          </div>
+          {drilldownLoading ? (
+            <LoadingState message="Loading cases..." />
+          ) : drilldown && drilldown.items.length === 0 ? (
+            <EmptyState title="No matching cases" description="No cases match this drilldown in the selected range." />
+          ) : drilldown ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border text-left text-muted">
+                  <tr>
+                    {['Case', 'Client', 'Title', 'Severity', 'AI Conf', 'Analyst Conf', 'Action', ''].map((h) => (
+                      <th key={h || 'act'} className="px-3 py-2 font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {drilldown.items.map((row) => (
+                    <tr key={row.case_id} className="border-b border-border">
+                      <td className="px-3 py-2 font-mono text-primary">{row.case_number}</td>
+                      <td className="px-3 py-2">{row.client_name}</td>
+                      <td className="max-w-xs truncate px-3 py-2">{row.title}</td>
+                      <td className="px-3 py-2">{row.severity}</td>
+                      <td className="px-3 py-2">{row.ai_confidence ?? '—'}</td>
+                      <td className="px-3 py-2">{row.analyst_confidence}</td>
+                      <td className="px-3 py-2">{row.ai_action}</td>
+                      <td className="px-3 py-2">
+                        <Link href={`/app/cases/${row.case_id}`}>
+                          <Button size="sm" variant="secondary">Open Case</Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </Card>
+      )}
     </div>
   );
 }

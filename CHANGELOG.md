@@ -2,6 +2,43 @@
 
 All notable changes to TrustOps are documented here.
 
+## [0.2.0-operational-pilot] — 2026-06-18
+
+### Operational Pilot
+
+#### Integration Health Dashboard
+- `GET /integrations/status` and `GET /integrations/status/{integration_key}`
+- Frontend `/app/integrations` for SOC Manager and Platform Admin
+- Status logic: Healthy, Warning, Error, Not Configured, No Recent Data
+- Added `tests/test_integration_status.py`
+
+#### Audit Log Viewer
+- `GET /audit-logs` with filters (client, case, event type, dates, search)
+- Frontend `/app/audit` with expandable event details
+- Added `tests/test_audit_logs.py`
+
+#### Case Quality Score
+- `CaseQualityService` — transparent 0–100 score and quality flags
+- Quality on `GET /cases`, `GET /cases/{id}`, `GET /cases/{id}/quality`
+- Manager dashboard low-quality and needs-QA counts
+- Case queue filter `low_quality=true`; not visible to client users
+- Added `tests/test_case_quality.py`
+
+#### Trust Metrics Drilldown
+- `GET /dashboards/trust-metrics/drilldown` with 6 drilldown types
+- Clickable KPI cards on Trust Metrics page with case list panel
+- Added `tests/test_trust_metrics_drilldown.py`
+
+#### Documentation
+- `docs/product-brief.md`, `docs/known-limitations.md`, `docs/pilot-success-scorecard.md`
+- `docs/pilot-launch-runbook.md`, `docs/assets/screenshots/` capture guide
+- `docs/releases/v0.2.0-operational-pilot.md`
+
+### Validation
+
+- 59 backend tests passing
+- `validate_demo.py` checks integration status, audit logs, case quality, drilldown, version
+
 ## [0.2.0-pilot] — 2026-06-18
 
 ### Client Portal v2

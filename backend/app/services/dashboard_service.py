@@ -219,6 +219,28 @@ class DashboardService:
             .all()
         )
 
+        from app.services.case_quality_service import CaseQualityService
+
+        quality_svc = CaseQualityService(self.db)
+        cases_with_details = (
+            self._base_cases(org_id)
+            .options(
+                joinedload(Case.evidence),
+                joinedload(Case.analyst_decisions),
+                joinedload(Case.qa_reviews),
+                joinedload(Case.sla_events),
+            )
+            .all()
+        )
+        low_quality = 0
+        needs_qa = 0
+        for c in cases_with_details:
+            q = quality_svc.score_case(c)
+            if q["quality_score"] < 75:
+                low_quality += 1
+            if "QA review recommended" in q["flags"]:
+                needs_qa += 1
+
         return {
             "total_open_cases": len(open_cases),
             "cases_by_priority": dict(Counter(c.priority or "Unset" for c in cases)),
@@ -235,6 +257,8 @@ class DashboardService:
             "ai_override_rate": round((ai_mod + ai_rej) / total_decisions * 100, 1),
             "qa_average_score": round(sum(qa_scores) / len(qa_scores), 1) if qa_scores else 0,
             "analyst_workload": {name: count for name, count in workload},
+            "low_quality_cases": low_quality,
+            "needs_qa_cases": needs_qa,
         }
 
     def analyst_metrics(self, org_id: uuid.UUID, user_id: uuid.UUID) -> dict:

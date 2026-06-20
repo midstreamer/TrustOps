@@ -190,6 +190,22 @@ export default function ManagerDashboard() {
           icon={ClipboardCheck}
           tone={(metrics.qa_average_score || 0) >= 80 ? 'success' : 'default'}
         />
+        <KpiCard
+          label="Low Quality Cases"
+          value={metrics.low_quality_cases ?? 0}
+          sub="Score below 75"
+          icon={AlertTriangle}
+          tone={(metrics.low_quality_cases ?? 0) > 0 ? 'warning' : 'default'}
+        />
+        <Link href="/app/cases?low_quality=true" className="block">
+          <KpiCard
+            label="Needs QA"
+            value={metrics.needs_qa_cases ?? 0}
+            sub="QA review recommended — view queue"
+            icon={ClipboardCheck}
+            tone={(metrics.needs_qa_cases ?? 0) > 0 ? 'warning' : 'default'}
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

@@ -112,7 +112,11 @@ pytest tests/ -v
 
 Follow `docs/demo-script.md` with personas from `docs/demo-personas.md`.
 
-## Step 10: Pilot Success Criteria (30 days)
+## Step 10: Launch the 30-Day Pilot
+
+Follow **[pilot-launch-runbook.md](pilot-launch-runbook.md)** for the week-by-week operational checklist from go-live through Day 30 QBR.
+
+## Step 11: Pilot Success Criteria (30 days)
 
 | Metric | Target |
 |--------|--------|

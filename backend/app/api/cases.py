@@ -12,18 +12,24 @@ from app.schemas import (
     CaseClose,
     CaseCreate,
     CaseEventResponse,
+    CaseQualitySummary,
     CaseResponse,
     CaseUpdate,
     SLAEventResponse,
 )
+from app.services.case_quality_service import CaseQualityService
 from app.services.case_service import CaseService
 from app.services.sla_service import SLAService
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 
-def _serialize_case(case: Case, sla_service: SLAService) -> CaseResponse:
+def _serialize_case(case: Case, sla_service: SLAService, user: User | None = None) -> CaseResponse:
     latest_ai = case.ai_recommendations[0] if case.ai_recommendations else None
+    quality = None
+    if user and not is_client_user(user):
+        q = CaseQualityService(sla_service.db).score_case(case)
+        quality = CaseQualitySummary(**q)
     return CaseResponse(
         id=case.id,
         case_number=case.case_number,
@@ -50,6 +56,7 @@ def _serialize_case(case: Case, sla_service: SLAService) -> CaseResponse:
         ai_confidence=latest_ai.confidence_score if latest_ai else None,
         alerts=[AlertResponse.model_validate(a) for a in case.alerts],
         sla_events=[SLAEventResponse.model_validate(e) for e in case.sla_events],
+        quality=quality,
     )
 
 
@@ -62,6 +69,7 @@ def list_cases(
     assigned_to_me: bool = False,
     sla_at_risk: bool = False,
     sla_breached: bool = False,
+    low_quality: bool = False,
     search: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -89,13 +97,18 @@ def list_cases(
     )
 
     results = []
+    quality_svc = CaseQualityService(db) if not is_client_user(user) else None
     for case in cases:
         sla_status = sla_svc.get_case_sla_summary(case.id)
         if sla_at_risk and sla_status != "At Risk":
             continue
         if sla_breached and sla_status != "Breached":
             continue
-        results.append(_serialize_case(case, sla_svc))
+        if low_quality and quality_svc:
+            q = quality_svc.score_case(case)
+            if q["quality_score"] >= 75:
+                continue
+        results.append(_serialize_case(case, sla_svc, user))
     return results
 
 
@@ -149,7 +162,22 @@ def create_case(
     sla_svc.create_sla_events_for_case(case)
     db.commit()
     case = svc.get_case_with_details(case.id)
-    return _serialize_case(case, sla_svc)
+    return _serialize_case(case, sla_svc, user)
+
+
+@router.get("/{case_id}/quality", response_model=CaseQualitySummary)
+def get_case_quality(
+    case_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    svc = CaseService(db)
+    case = svc.get_case_with_details(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return CaseQualitySummary(**CaseQualityService(db).score_case(case))
 
 
 @router.get("/{case_id}", response_model=CaseResponse)
@@ -163,7 +191,7 @@ def get_case(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     enforce_client_access(user, case.client_id)
-    return _serialize_case(case, SLAService(db))
+    return _serialize_case(case, SLAService(db), user)
 
 
 @router.patch("/{case_id}", response_model=CaseResponse)
@@ -180,7 +208,7 @@ def update_case(
     svc.update_case(case, **payload.model_dump(exclude_unset=True))
     db.commit()
     case = svc.get_case_with_details(case_id)
-    return _serialize_case(case, SLAService(db))
+    return _serialize_case(case, SLAService(db), user)
 
 
 @router.post("/{case_id}/assign", response_model=CaseResponse)
@@ -197,7 +225,7 @@ def assign_case(
     svc.assign_case(case, payload.user_id, user)
     db.commit()
     case = svc.get_case_with_details(case_id)
-    return _serialize_case(case, SLAService(db))
+    return _serialize_case(case, SLAService(db), user)
 
 
 @router.post("/{case_id}/close", response_model=CaseResponse)
@@ -216,7 +244,7 @@ def close_case(
     sla_svc.complete_sla(case.id, "Closure")
     db.commit()
     case = svc.get_case_with_details(case_id)
-    return _serialize_case(case, sla_svc)
+    return _serialize_case(case, sla_svc, user)
 
 
 @router.get("/{case_id}/timeline", response_model=list[CaseEventResponse])

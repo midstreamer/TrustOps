@@ -6,7 +6,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.models import AIRecommendation, AnalystDecision, Case, QAReview, User
+from app.models import AIRecommendation, AnalystDecision, Case, Client, QAReview, User
 
 HIGH_CONFIDENCE = 80
 LOW_CONFIDENCE = 60
@@ -389,6 +389,105 @@ class TrustMetricsService:
                 "high_confidence_alignment": round(high_conf_alignment, 1),
                 "qa_validation_component": round(qa_validation, 1),
             },
+        }
+
+    DRILLDOWN_TYPES = {
+        "high_confidence_ai_rejected",
+        "low_confidence_ai_accepted",
+        "human_ai_disagreement",
+        "qa_reversed",
+        "analyst_override",
+        "low_analyst_confidence",
+    }
+
+    def drilldown(
+        self,
+        organization_id: uuid.UUID,
+        drilldown_type: str,
+        *,
+        client_id: uuid.UUID | None = None,
+        analyst_user_id: uuid.UUID | None = None,
+        severity: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        if drilldown_type not in self.DRILLDOWN_TYPES:
+            raise ValueError(f"Invalid drilldown type. Allowed: {sorted(self.DRILLDOWN_TYPES)}")
+
+        decisions = self._query_decisions(organization_id, client_id, start_date, end_date).all()
+        ai_recs = self._query_ai_recommendations(organization_id, client_id, start_date, end_date).all()
+        ai_by_id = {r.id: r for r in ai_recs}
+        qa_reviews = self._query_qa_reviews(organization_id, client_id, start_date, end_date).all()
+        qa_by_case = {q.case_id: q for q in qa_reviews}
+
+        case_ids = {d.case_id for d in decisions}
+        cases = self.db.query(Case).filter(Case.id.in_(case_ids)).all() if case_ids else []
+        case_by_id = {c.id: c for c in cases}
+
+        matched: list[tuple[Case, AnalystDecision, AIRecommendation | None, QAReview | None]] = []
+        for d in decisions:
+            if analyst_user_id and d.analyst_user_id != analyst_user_id:
+                continue
+            case = case_by_id.get(d.case_id)
+            if not case:
+                continue
+            if severity and case.severity != severity:
+                continue
+            ai_rec = ai_by_id.get(d.ai_recommendation_id) if d.ai_recommendation_id else None
+            qa = qa_by_case.get(d.case_id)
+
+            if drilldown_type == "high_confidence_ai_rejected":
+                if ai_rec and ai_rec.confidence_score is not None and ai_rec.confidence_score >= HIGH_CONFIDENCE and d.ai_action == "Rejected":
+                    matched.append((case, d, ai_rec, qa))
+            elif drilldown_type == "low_confidence_ai_accepted":
+                if ai_rec and ai_rec.confidence_score is not None and ai_rec.confidence_score < LOW_CONFIDENCE and d.ai_action == "Accepted":
+                    matched.append((case, d, ai_rec, qa))
+            elif drilldown_type == "human_ai_disagreement":
+                if d.human_ai_agreement is False:
+                    matched.append((case, d, ai_rec, qa))
+            elif drilldown_type == "qa_reversed":
+                if qa and qa.disposition_correct is False:
+                    matched.append((case, d, ai_rec, qa))
+            elif drilldown_type == "analyst_override":
+                if d.ai_action in ("Modified", "Rejected"):
+                    matched.append((case, d, ai_rec, qa))
+            elif drilldown_type == "low_analyst_confidence":
+                if d.analyst_confidence < LOW_CONFIDENCE:
+                    matched.append((case, d, ai_rec, qa))
+
+        total = len(matched)
+        page = matched[offset : offset + min(limit, 200)]
+        client_ids = {c.client_id for c, _, _, _ in page}
+        clients = self.db.query(Client).filter(Client.id.in_(client_ids)).all() if client_ids else []
+        client_names = {c.id: c.name for c in clients}
+
+        items = []
+        for case, decision, ai_rec, qa in page:
+            items.append(
+                {
+                    "case_id": case.id,
+                    "case_number": case.case_number,
+                    "client_name": client_names.get(case.client_id),
+                    "title": case.title,
+                    "severity": case.severity,
+                    "priority": case.priority,
+                    "ai_confidence": ai_rec.confidence_score if ai_rec else None,
+                    "analyst_confidence": decision.analyst_confidence,
+                    "ai_action": decision.ai_action,
+                    "human_ai_agreement": decision.human_ai_agreement,
+                    "qa_score": qa.overall_score if qa else None,
+                    "created_at": decision.created_at,
+                }
+            )
+
+        return {
+            "type": drilldown_type,
+            "items": items,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
         }
 
     @staticmethod

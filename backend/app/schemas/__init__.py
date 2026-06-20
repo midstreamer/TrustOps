@@ -175,9 +175,17 @@ class CaseResponse(BaseModel):
     ai_confidence: int | None = None
     alerts: list[AlertResponse] = []
     sla_events: list[SLAEventResponse] = []
+    quality: "CaseQualitySummary | None" = None
 
     class Config:
         from_attributes = True
+
+
+class CaseQualitySummary(BaseModel):
+    quality_score: int
+    quality_grade: str
+    flags: list[str] = []
+    score_breakdown: dict[str, int] = {}
 
 
 class CaseCreate(BaseModel):
@@ -479,3 +487,63 @@ class SentinelAlertPayload(BaseModel):
 
     class Config:
         extra = "allow"
+
+
+class IntegrationStatusResponse(BaseModel):
+    integration_key: str
+    integration_name: str
+    source_system: str
+    status: str
+    last_alert_received_at: str | None = None
+    alerts_received_last_24h: int = 0
+    failed_payloads_last_24h: int = 0
+    last_error: str | None = None
+    api_key_configured: bool = False
+    client_mapping_status: str = "No Clients"
+
+
+class AuditLogItemResponse(BaseModel):
+    id: UUID
+    event_type: str
+    event_type_label: str
+    entity_type: str | None = None
+    entity_id: UUID | None = None
+    client_id: UUID | None = None
+    client_name: str | None = None
+    case_id: UUID | None = None
+    case_number: str | None = None
+    user_id: UUID | None = None
+    user_name: str | None = None
+    created_at: datetime
+    previous_value_json: dict | None = None
+    new_value_json: dict | None = None
+
+
+class AuditLogListResponse(BaseModel):
+    items: list[AuditLogItemResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class TrustMetricsDrilldownItem(BaseModel):
+    case_id: UUID
+    case_number: str
+    client_name: str | None = None
+    title: str
+    severity: str
+    priority: str | None = None
+    ai_confidence: int | None = None
+    analyst_confidence: int
+    ai_action: str
+    human_ai_agreement: bool | None = None
+    qa_score: int | None = None
+    created_at: datetime
+
+
+class TrustMetricsDrilldownResponse(BaseModel):
+    type: str
+    items: list[TrustMetricsDrilldownItem]
+    total: int
+    limit: int
+    offset: int

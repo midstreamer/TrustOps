@@ -5,13 +5,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth, hasRole, SOC_ROLES, MANAGER_ROLES, CLIENT_ROLES, ADMIN_SETUP_ROLES } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
-  Shield, LayoutDashboard, FolderOpen, FileText, Settings, LogOut, Users, Brain, Wrench,
+  Shield, LayoutDashboard, FolderOpen, FileText, Settings, LogOut, Users, Brain, Wrench, Plug, ScrollText,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/app/cases', label: 'Case Queue', icon: FolderOpen, roles: SOC_ROLES },
   { href: '/app/manager', label: 'Manager Dashboard', icon: LayoutDashboard, roles: MANAGER_ROLES },
   { href: '/app/trust-metrics', label: 'Trust Metrics', icon: Brain, roles: MANAGER_ROLES },
+  { href: '/app/integrations', label: 'Integrations', icon: Plug, roles: MANAGER_ROLES },
+  { href: '/app/audit', label: 'Audit Log', icon: ScrollText, roles: MANAGER_ROLES },
   { href: '/app/admin/setup', label: 'Admin Setup', icon: Wrench, roles: ADMIN_SETUP_ROLES },
   { href: '/app/client-dashboard', label: 'Client Dashboard', icon: Users, roles: [...CLIENT_ROLES, ...MANAGER_ROLES] },
   { href: '/app/reports', label: 'Reports', icon: FileText, roles: [...MANAGER_ROLES, ...CLIENT_ROLES] },
