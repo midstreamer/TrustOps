@@ -33,10 +33,17 @@ export async function api<T>(
   return res.json();
 }
 
-export async function apiUpload<T>(path: string, file: File): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  extraFields?: Record<string, string>,
+): Promise<T> {
   const token = getToken();
   const form = new FormData();
   form.append('file', file);
+  if (extraFields) {
+    Object.entries(extraFields).forEach(([k, v]) => form.append(k, v));
+  }
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -47,4 +54,8 @@ export async function apiUpload<T>(path: string, file: File): Promise<T> {
     throw new Error(err.detail || 'Upload failed');
   }
   return res.json();
+}
+
+export function evidenceDownloadUrl(caseId: string, evidenceId: string): string {
+  return `${API_URL}/cases/${caseId}/evidence/${evidenceId}/download`;
 }

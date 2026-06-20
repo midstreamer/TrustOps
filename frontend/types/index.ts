@@ -68,6 +68,10 @@ export interface Case {
   updated_at: string;
   sla_status: string | null;
   ai_confidence: number | null;
+  external_ticket_system: string | null;
+  external_ticket_id: string | null;
+  external_ticket_url: string | null;
+  external_ticket_synced_at: string | null;
   alerts: Alert[];
   sla_events: SLAEvent[];
   quality?: CaseQuality | null;
@@ -185,6 +189,13 @@ export interface CaseEvidence {
   title: string;
   content: string | null;
   source: string | null;
+  file_name: string | null;
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  file_hash: string | null;
+  visibility: string;
+  uploaded_at: string | null;
+  has_file?: boolean;
   created_at: string;
 }
 
@@ -294,6 +305,66 @@ export interface AdminOverview {
     has_cases: boolean;
     setup_complete: boolean;
   };
+}
+
+export interface AdminSummary extends AdminOverview {
+  app_version: string;
+  integration_key_count: number;
+}
+
+export interface PilotChecklistItem {
+  key: string;
+  label: string;
+  status: 'Complete' | 'Needs attention' | 'Not started';
+  complete: boolean;
+}
+
+export interface PilotChecklist {
+  items: PilotChecklistItem[];
+  complete_count: number;
+  total_count: number;
+  ready_for_pilot: boolean;
+}
+
+export interface IntegrationKey {
+  id: string;
+  client_id: string;
+  integration_name: string;
+  source_system: string;
+  key_prefix: string;
+  status: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface IntegrationKeyCreated extends IntegrationKey {
+  raw_key: string;
+}
+
+export interface ReportBranding {
+  id?: string;
+  organization_id?: string;
+  client_id?: string | null;
+  provider_name: string | null;
+  provider_logo_url: string | null;
+  client_logo_url: string | null;
+  report_title: string;
+  prepared_by: string | null;
+  prepared_for: string | null;
+  confidentiality_footer: string | null;
+  cover_page_enabled: boolean;
+  theme_name: string | null;
+}
+
+export interface ExternalTicketSummary {
+  target: string;
+  short_description: string;
+  description: string;
+  priority: string;
+  category: string;
+  subcategory: string;
+  assignment_group: string | null;
+  external_reference: string;
 }
 
 export interface WorkflowFunnelStage {

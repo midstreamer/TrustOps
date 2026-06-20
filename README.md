@@ -4,7 +4,7 @@
 
 TrustOps is a human-in-the-loop SOC case management platform for SOCaaS/MDR providers. It is the operational system of record for managed SOC work — not a SIEM, SOAR, EDR, or XDR replacement.
 
-**Current release:** `v0.2.0-operational-pilot` — see [CHANGELOG.md](CHANGELOG.md) and [release notes](docs/releases/v0.2.0-operational-pilot.md)
+**Current release:** `v0.2.1-pilot-admin` — see [CHANGELOG.md](CHANGELOG.md) and [release notes](docs/releases/v0.2.1-pilot-admin.md)
 
 ## Screenshots
 
@@ -27,6 +27,11 @@ Capture required — see [docs/assets/screenshots/README.md](docs/assets/screens
 - **Integration health dashboard** (Sentinel + webhook status)
 - **Audit log viewer** for SOC managers and platform admins
 - **Case quality score** and flags for incomplete or risky cases
+- **Pilot Admin Console v2** — clients, users, integration keys, branding, checklist, demo reset
+- **Per-client integration keys** with rotation, revocation, and hashed storage
+- **Report branding** — provider/client logos, cover page, confidentiality footer
+- **Controlled evidence file uploads** with visibility rules (Internal / Client Visible)
+- **ServiceNow/Jira export stubs** — external ticket summaries and link storage
 - SLA policy configuration and event tracking
 - QA reviews for SOC managers
 - Client Value Report v2 with print/PDF export and AI regeneration
@@ -95,7 +100,7 @@ Start with **CASE-GOLDEN** (Apex Energy). Full script:
 - [docs/product-brief.md](docs/product-brief.md) — buyer-facing summary
 - [docs/pilot-success-scorecard.md](docs/pilot-success-scorecard.md) — 30-day KPIs
 - [docs/known-limitations.md](docs/known-limitations.md) — transparent pilot scope
-- [docs/releases/v0.2.0-operational-pilot.md](docs/releases/v0.2.0-operational-pilot.md) — release notes
+- [docs/releases/v0.2.1-pilot-admin.md](docs/releases/v0.2.1-pilot-admin.md) — release notes
 - [docs/demo-personas.md](docs/demo-personas.md) — personas
 - [docs/demo-data-dictionary.md](docs/demo-data-dictionary.md) — seed data reference
 
@@ -125,16 +130,19 @@ python scripts/pilot_setup.py demo-case --client "Apex Energy"
 
 Sample Sentinel payload: [samples/sentinel-alert-payload.json](samples/sentinel-alert-payload.json)
 
-## Admin Setup UI
+## Admin Console v2
 
-Platform Admins and SOC Managers can onboard managed clients at **Admin Setup** (`/app/admin/setup`):
+Platform Admins and SOC Managers can administer pilots at **Pilot Admin** (`/app/admin`):
 
-- **Overview** — setup checklist for multi-client MDR operations
-- **Clients** — add managed clients with default SLA templates; copy `client_id` for integrations
-- **Integrations** — client ID mapping for Sentinel/webhook; integration event log
-- **Users** — create provider and client portal users (Platform Admin only)
-- **SLA Policies** — apply default Critical/High templates per client
-- **Sample Data** — generate demo cases or import sample CSV alerts
+- **Dashboard** — clients, users, SLA policies, integration keys, deployment mode, app version
+- **Clients** — create and edit managed clients
+- **Users** — create users, assign roles, activate/deactivate
+- **Integration Keys** — per-client keys for Sentinel and webhook ingestion (raw key shown once)
+- **Report Branding** — organization and client-level report cover page settings
+- **Pilot Checklist** — setup readiness with Complete / Needs attention / Not started
+- **Demo Reset** — local-demo only; blocked in pilot/production modes
+
+Legacy tabbed setup remains at `/app/admin/setup`.
 
 ## Trust Metrics
 
@@ -145,16 +153,16 @@ Query params on `GET /dashboards/trust-metrics`: `client_id`, `start_date`, `end
 ## Tests & Validation
 
 ```bash
-cd backend && pytest tests/ -v          # 59 tests
+cd backend && pytest tests/ -v          # 69 tests
 API_URL=http://localhost:8001 python scripts/validate_demo.py
 cd frontend && npm run build:check
 ```
 
-Validates health, golden path, integration status, audit logs, case quality, trust metrics drilldown, and version `0.2.0-operational-pilot`.
+Validates health, golden path, integration keys, pilot admin APIs, report branding, evidence upload, external ticket export, client isolation, and version `0.2.1-pilot-admin`.
 
 ## Environment Variables
 
-See [.env.example](.env.example) for `DATABASE_URL`, `JWT_SECRET`, `WEBHOOK_API_KEY`, `SENTINEL_API_KEY`, `DEPLOYMENT_MODE`, `APP_VERSION`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`.
+See [.env.example](.env.example) for `DATABASE_URL`, `JWT_SECRET`, `WEBHOOK_API_KEY`, `SENTINEL_API_KEY`, `DEPLOYMENT_MODE`, `APP_VERSION`, `MAX_EVIDENCE_FILE_MB`, `CORS_ORIGINS`, `NEXT_PUBLIC_API_URL`.
 
 **Re-seeding:** `seed.py` only runs on an empty database:
 ```bash

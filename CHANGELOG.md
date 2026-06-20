@@ -2,6 +2,46 @@
 
 All notable changes to TrustOps are documented here.
 
+## [0.2.1-pilot-admin] — 2026-06-18
+
+### Pilot Administration
+
+#### Per-Client Integration Keys
+- `integration_keys` table with hashed keys and prefix display
+- APIs: list, create, rotate, revoke, disable
+- Sentinel and webhook ingestion authenticate per-client keys first
+- Environment key fallback only in `local-demo` mode
+- Added `tests/test_pilot_admin.py`
+
+#### Pilot Admin Console v2
+- `/app/admin` dashboard with summary cards
+- Routes: clients, users, integration-keys, report-branding, pilot-checklist, demo-reset
+- `GET /admin/summary`, `GET /admin/pilot-checklist`, `POST /admin/demo-reset`
+
+#### Report Branding
+- `report_branding` table with org and client-level overrides
+- Branded cover page on report preview/export
+- Export filename: `TrustOps_{ClientName}_{YYYY-MM}_SOC_Value_Report.pdf`
+
+#### Evidence File Uploads
+- `POST /cases/{id}/evidence/upload`, `GET .../download`
+- Allowed types: txt, log, csv, json, png, jpg, jpeg, pdf (10 MB default)
+- Visibility: Internal / Client Visible
+
+#### ServiceNow/Jira Export Stubs
+- `GET /cases/{id}/external-ticket-summary?target=servicenow|jira|generic`
+- `POST /cases/{id}/external-ticket-link`
+- Case detail External Ticket section
+
+#### Documentation
+- `docs/releases/v0.2.1-pilot-admin.md`
+- Updated security controls, known limitations, deployment, pilot-setup
+
+### Validation
+
+- 69 backend tests passing
+- `validate_demo.py` checks integration keys, admin APIs, branding, evidence, external tickets, version
+
 ## [0.2.0-operational-pilot] — 2026-06-18
 
 ### Operational Pilot

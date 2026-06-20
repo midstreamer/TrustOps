@@ -42,9 +42,22 @@ Verified by `tests/test_report_visibility.py` and tenant isolation tests.
 ## Integration Security
 
 - Webhook and Sentinel endpoints require `X-TrustOps-Webhook-Key`
-- Keys must be rotated for production (`WEBHOOK_API_KEY`, optional `SENTINEL_API_KEY`)
+- **Per-client integration keys** (v0.2.1+) — hashed at rest; raw key shown once at create/rotate
+- Key lifecycle: Active → Rotated / Revoked / Disabled
+- **Key rotation and revocation** audited; revoked keys reject ingestion immediately
+- Environment `WEBHOOK_API_KEY` fallback only in `local-demo` mode
 - Invalid key returns **401**
-- `client_id` in payload must exist; unknown client returns **404**
+- `client_id` in payload must match the key's client; cross-client ingestion returns **401**
+
+## Evidence File Upload Controls
+
+- Allowed extensions: txt, log, csv, json, png, jpg, jpeg, pdf
+- Size limit: `MAX_EVIDENCE_FILE_MB` (default 10)
+- Safe storage filenames generated server-side (original filename not trusted)
+- SHA-256 file hash stored for integrity
+- **Visibility rules:** Internal (SOC only) or Client Visible
+- Client users cannot download Internal evidence
+- Upload and download actions write audit log entries
 
 ## Audit Logging
 
@@ -56,6 +69,9 @@ Events logged for:
 - QA review
 - Report publishing
 - Webhook/Sentinel alert ingestion
+- **Integration key create, rotate, revoke, disable**
+- **Evidence file upload and download**
+- **External ticket link save**
 
 ## Transport
 
@@ -67,7 +83,8 @@ Events logged for:
 | Secret | Storage |
 |--------|---------|
 | `JWT_SECRET` | Environment variable / secrets manager |
-| `WEBHOOK_API_KEY` | Environment variable / secrets manager |
+| `WEBHOOK_API_KEY` | Environment variable (local-demo fallback only) |
+| Per-client integration keys | Hashed in database; distribute raw key via secure channel once |
 | `DATABASE_URL` | Environment variable / secrets manager |
 | `OPENAI_API_KEY` | Environment variable (optional) |
 
@@ -87,7 +104,7 @@ Never commit `.env` to version control.
 - [ ] Enable TLS
 - [ ] Restrict CORS to production frontend URL
 - [ ] Configure database backups
-- [ ] Rotate webhook API keys per integration
+- [ ] Rotate or create per-client integration keys for each managed client
 - [ ] Review audit logs weekly
 
 ## Vulnerability Reporting

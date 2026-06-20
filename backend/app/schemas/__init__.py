@@ -176,6 +176,10 @@ class CaseResponse(BaseModel):
     alerts: list[AlertResponse] = []
     sla_events: list[SLAEventResponse] = []
     quality: "CaseQualitySummary | None" = None
+    external_ticket_system: str | None = None
+    external_ticket_id: str | None = None
+    external_ticket_url: str | None = None
+    external_ticket_synced_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -258,6 +262,14 @@ class CaseEvidenceResponse(BaseModel):
     content: str | None
     source: str | None
     created_at: datetime
+    file_name: str | None = None
+    file_path: str | None = None
+    mime_type: str | None = None
+    file_size_bytes: int | None = None
+    file_hash: str | None = None
+    visibility: str = "Internal"
+    uploaded_at: datetime | None = None
+    has_file: bool = False
 
     class Config:
         from_attributes = True
@@ -547,3 +559,86 @@ class TrustMetricsDrilldownResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class IntegrationKeyCreate(BaseModel):
+    integration_name: str
+    source_system: str
+
+
+class IntegrationKeyCreatedResponse(BaseModel):
+    id: UUID
+    client_id: UUID
+    integration_name: str
+    source_system: str
+    key_prefix: str
+    raw_key: str
+    status: str
+    created_at: datetime
+
+
+class IntegrationKeyResponse(BaseModel):
+    id: UUID
+    client_id: UUID
+    integration_name: str
+    source_system: str
+    key_prefix: str
+    status: str
+    last_used_at: datetime | None = None
+    rotated_at: datetime | None = None
+    revoked_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReportBrandingCreate(BaseModel):
+    client_id: UUID | None = None
+    provider_name: str | None = None
+    provider_logo_url: str | None = None
+    client_logo_url: str | None = None
+    report_title: str | None = None
+    prepared_by: str | None = None
+    prepared_for: str | None = None
+    confidentiality_footer: str | None = None
+    cover_page_enabled: bool | None = None
+    theme_name: str | None = None
+
+
+class ReportBrandingResponse(BaseModel):
+    id: UUID
+    organization_id: UUID
+    client_id: UUID | None
+    provider_name: str | None
+    provider_logo_url: str | None
+    client_logo_url: str | None
+    report_title: str
+    prepared_by: str | None
+    prepared_for: str | None
+    confidentiality_footer: str | None
+    cover_page_enabled: bool
+    theme_name: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class ExternalTicketLinkCreate(BaseModel):
+    external_ticket_system: str
+    external_ticket_id: str
+    external_ticket_url: str | None = None
+
+
+class ExternalTicketSummaryResponse(BaseModel):
+    target: str
+    short_description: str
+    description: str
+    priority: str
+    external_reference: str
+    category: str | None = None
+    subcategory: str | None = None
+    assignment_group: str | None = None
+    issue_type: str | None = None
+    project_key: str | None = None
+    labels: list[str] | None = None

@@ -114,6 +114,10 @@ class Case(Base, TimestampMixin):
     dispositioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    external_ticket_system: Mapped[str | None] = mapped_column(String(100))
+    external_ticket_id: Mapped[str | None] = mapped_column(String(255))
+    external_ticket_url: Mapped[str | None] = mapped_column(String(500))
+    external_ticket_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     organization: Mapped["Organization"] = relationship(back_populates="cases")
     client: Mapped["Client"] = relationship(back_populates="cases")
@@ -197,6 +201,13 @@ class CaseEvidence(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    file_name: Mapped[str | None] = mapped_column(String(255))
+    file_path: Mapped[str | None] = mapped_column(String(500))
+    mime_type: Mapped[str | None] = mapped_column(String(100))
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer)
+    file_hash: Mapped[str | None] = mapped_column(String(128))
+    visibility: Mapped[str] = mapped_column(String(50), default="Internal", nullable=False)
+    uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     case: Mapped["Case"] = relationship(back_populates="evidence")
 
@@ -389,6 +400,50 @@ class IntegrationEvent(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     payload_summary: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IntegrationKey(Base, TimestampMixin):
+    __tablename__ = "integration_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=False
+    )
+    integration_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_system: Mapped[str] = mapped_column(String(100), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="Active", nullable=False)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ReportBranding(Base, TimestampMixin):
+    __tablename__ = "report_branding"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True
+    )
+    provider_name: Mapped[str | None] = mapped_column(String(255))
+    provider_logo_url: Mapped[str | None] = mapped_column(String(500))
+    client_logo_url: Mapped[str | None] = mapped_column(String(500))
+    report_title: Mapped[str] = mapped_column(String(255), default="SOC Monthly Value Report", nullable=False)
+    prepared_by: Mapped[str | None] = mapped_column(String(255))
+    prepared_for: Mapped[str | None] = mapped_column(String(255))
+    confidentiality_footer: Mapped[str | None] = mapped_column(Text)
+    cover_page_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    theme_name: Mapped[str | None] = mapped_column(String(50))
 
 
 class AlertImport(Base):

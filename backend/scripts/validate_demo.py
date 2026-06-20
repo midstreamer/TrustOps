@@ -54,8 +54,8 @@ def main() -> int:
     ver_body = r_ver.json() if r_ver.status_code == 200 else {}
     check("API version", r_ver.status_code == 200 and "version" in ver_body, r_ver.text)
     check(
-        "API version is operational pilot",
-        ver_body.get("version") == "0.2.0-operational-pilot",
+        "API version is pilot admin",
+        ver_body.get("version") == "0.2.1-pilot-admin",
         str(ver_body.get("version")),
     )
 
@@ -288,6 +288,81 @@ def main() -> int:
     if riverbend:
         other_dash = api("GET", f"/dashboards/client/{riverbend['id']}", client_token)
         check("Client cannot access other client dashboard", other_dash.status_code == 403)
+
+    # v0.2.1 pilot admin
+    print("\n[Pilot admin v0.2.1]")
+    admin_token = login("admin@trustops.demo")
+    summary = api("GET", "/admin/summary", admin_token)
+    check("Admin summary endpoint", summary.status_code == 200, summary.text[:200])
+    checklist = api("GET", "/admin/pilot-checklist", admin_token)
+    check("Pilot checklist endpoint", checklist.status_code == 200, checklist.text[:200])
+    if checklist.status_code == 200:
+        cl = checklist.json()
+        check("Pilot checklist has items", len(cl.get("items", [])) >= 10)
+
+    branding = api("GET", "/report-branding", admin_token)
+    check("Report branding endpoint", branding.status_code == 200, branding.text[:200])
+
+    client_admin = api("GET", "/admin/summary", client_token)
+    check("Client cannot access admin summary", client_admin.status_code in (401, 403), str(client_admin.status_code))
+
+    key_r = api(
+        "POST",
+        f"/integration-keys/clients/{apex['id']}",
+        admin_token,
+        json={"integration_name": "Microsoft Sentinel", "source_system": "Sentinel"},
+    )
+    check("Create integration key", key_r.status_code == 200, key_r.text[:200])
+    raw_key = key_r.json().get("raw_key") if key_r.status_code == 200 else None
+    key_id = key_r.json().get("id") if key_r.status_code == 200 else None
+
+    if raw_key:
+        sent_r = httpx.post(
+            f"{BASE}/integrations/sentinel/alerts",
+            headers={"X-TrustOps-Webhook-Key": raw_key, "Content-Type": "application/json"},
+            json={
+                "client_id": apex["id"],
+                "title": "Sentinel per-client key validation",
+                "severity": "Medium",
+                "source_system": "Microsoft Sentinel",
+            },
+            timeout=30,
+        )
+        check("Sentinel ingestion with per-client key", sent_r.status_code == 200, sent_r.text[:200])
+
+    if key_id:
+        revoke_r = api("POST", f"/integration-keys/{key_id}/revoke", admin_token)
+        check("Revoke integration key", revoke_r.status_code == 200, revoke_r.text[:200])
+        if raw_key:
+            bad_sent = httpx.post(
+                f"{BASE}/integrations/sentinel/alerts",
+                headers={"X-TrustOps-Webhook-Key": raw_key, "Content-Type": "application/json"},
+                json={"client_id": apex["id"], "title": "x", "severity": "Low"},
+                timeout=30,
+            )
+            check("Revoked key rejects Sentinel ingestion", bad_sent.status_code == 401, str(bad_sent.status_code))
+
+    ticket = api("GET", f"/cases/{workflow_case_id}/external-ticket-summary?target=servicenow", mgr_token)
+    check("External ticket summary endpoint", ticket.status_code == 200, ticket.text[:200])
+
+    demo_reset = api("POST", "/admin/demo-reset", mgr_token)
+    check("Demo reset blocked for non-admin or protected mode", demo_reset.status_code in (403, 200), str(demo_reset.status_code))
+
+    # Evidence upload
+    import io
+    files = {"file": ("validate.log", io.BytesIO(b"demo evidence line"), "text/plain")}
+    ev_up = httpx.post(
+        f"{BASE}/cases/{workflow_case_id}/evidence/upload",
+        headers={"Authorization": f"Bearer {analyst_token}"},
+        data={"visibility": "Internal", "title": "Validation log"},
+        files=files,
+        timeout=30,
+    )
+    check("Evidence upload endpoint", ev_up.status_code == 200, ev_up.text[:200])
+    if ev_up.status_code == 200:
+        ev_id = ev_up.json().get("id")
+        client_dl = api("GET", f"/cases/{workflow_case_id}/evidence/{ev_id}/download", client_token)
+        check("Client cannot download internal evidence", client_dl.status_code in (401, 403), str(client_dl.status_code))
 
     # Summary
     print(f"\n{'='*50}")

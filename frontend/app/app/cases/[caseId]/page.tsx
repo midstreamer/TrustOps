@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, apiUpload, getToken, evidenceDownloadUrl } from '@/lib/api';
 import type {
   Case, AIRecommendation, AnalystDecision, CaseNote, CaseEvidence, CaseEvent, SLAEvent,
+  ExternalTicketSummary,
 } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/badges';
 import { QualityCard } from '@/components/dashboard/quality-badge';
 import { DISPOSITIONS, PRIORITIES, AI_ACTIONS } from '@/lib/utils';
-import { Sparkles, ClipboardCheck } from 'lucide-react';
+import { Sparkles, ClipboardCheck, Upload, Download, ExternalLink, Copy } from 'lucide-react';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString();
@@ -56,6 +57,15 @@ export default function CaseDetailPage() {
     client_notification_needed: false,
     decision_notes: '',
   });
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadVisibility, setUploadVisibility] = useState('Internal');
+  const [uploading, setUploading] = useState(false);
+  const [ticketSummary, setTicketSummary] = useState<ExternalTicketSummary | null>(null);
+  const [ticketForm, setTicketForm] = useState({
+    external_ticket_system: 'ServiceNow',
+    external_ticket_id: '',
+    external_ticket_url: '',
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,6 +85,11 @@ export default function CaseDetailPage() {
       setNotes(n);
       setEvidence(ev);
       setTimeline(tl);
+      setTicketForm({
+        external_ticket_system: c.external_ticket_system || 'ServiceNow',
+        external_ticket_id: c.external_ticket_id || '',
+        external_ticket_url: c.external_ticket_url || '',
+      });
       if (ai[0] && !dec[0]) {
         setDecisionForm((f) => ({
           ...f,
@@ -135,6 +150,68 @@ export default function CaseDetailPage() {
     await api(`/cases/${caseId}/evidence`, { method: 'POST', body: JSON.stringify(evidenceForm) });
     setEvidenceForm({ title: '', content: '', evidence_type: 'Log' });
     await load();
+  };
+
+  const uploadEvidence = async () => {
+    if (!uploadFile) return;
+    setUploading(true);
+    try {
+      await apiUpload(`/cases/${caseId}/evidence/upload`, uploadFile, {
+        visibility: uploadVisibility,
+        title: uploadFile.name,
+      });
+      setUploadFile(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadEvidence = async (evidenceId: string) => {
+    const token = getToken();
+    const res = await fetch(evidenceDownloadUrl(caseId, evidenceId), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      setError('Download failed');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'evidence';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateTicketSummary = async (target: string) => {
+    try {
+      const s = await api<ExternalTicketSummary>(`/cases/${caseId}/external-ticket-summary?target=${target}`);
+      setTicketSummary(s);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Summary failed');
+    }
+  };
+
+  const saveTicketLink = async () => {
+    try {
+      await api(`/cases/${caseId}/external-ticket-link`, {
+        method: 'POST',
+        body: JSON.stringify(ticketForm),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    }
+  };
+
+  const copyTicketSummary = () => {
+    if (!ticketSummary) return;
+    const text = `${ticketSummary.short_description}\n\n${ticketSummary.description}`;
+    navigator.clipboard.writeText(text);
   };
 
   if (loading) return <LoadingState message="Loading case workspace..." />;
@@ -214,8 +291,22 @@ export default function CaseDetailPage() {
               <ul className="mb-3 space-y-2 text-sm">
                 {evidence.map((e) => (
                   <li key={e.id} className="rounded-lg bg-background p-2">
-                    <div className="font-medium">{e.title}</div>
-                    <div className="text-xs text-muted">{e.evidence_type}</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium">{e.title}</div>
+                        <div className="text-xs text-muted">
+                          {e.evidence_type}
+                          {e.file_name && ` · ${e.file_name}`}
+                          {e.file_size_bytes != null && ` · ${(e.file_size_bytes / 1024).toFixed(1)} KB`}
+                          {e.visibility && ` · ${e.visibility}`}
+                        </div>
+                      </div>
+                      {e.has_file && (
+                        <Button size="sm" variant="secondary" onClick={() => downloadEvidence(e.id)}>
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                     {e.content && <div className="mt-1 font-mono text-xs">{e.content}</div>}
                   </li>
                 ))}
@@ -224,7 +315,54 @@ export default function CaseDetailPage() {
             <div className="space-y-2 border-t border-border pt-3">
               <Input placeholder="Evidence title" value={evidenceForm.title} onChange={(e) => setEvidenceForm({ ...evidenceForm, title: e.target.value })} />
               <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" rows={2} placeholder="Content" value={evidenceForm.content} onChange={(e) => setEvidenceForm({ ...evidenceForm, content: e.target.value })} />
-              <Button size="sm" onClick={addEvidence}>Add Evidence</Button>
+              <Button size="sm" onClick={addEvidence}>Add Text Evidence</Button>
+            </div>
+            <div className="mt-4 space-y-2 border-t border-border pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="file" className="text-xs" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+                <Select value={uploadVisibility} onChange={(e) => setUploadVisibility(e.target.value)}>
+                  <option value="Internal">Internal</option>
+                  <option value="Client Visible">Client Visible</option>
+                </Select>
+                <Button size="sm" onClick={uploadEvidence} disabled={!uploadFile || uploading}>
+                  <Upload className="mr-1 h-3 w-3" />
+                  {uploading ? 'Uploading...' : 'Upload File'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <PanelHeader title="External Ticket" subtitle="Export summary to ServiceNow or Jira" />
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={() => generateTicketSummary('servicenow')}>ServiceNow</Button>
+              <Button size="sm" variant="secondary" onClick={() => generateTicketSummary('jira')}>Jira</Button>
+              <Button size="sm" variant="secondary" onClick={() => generateTicketSummary('generic')}>Generic</Button>
+              {ticketSummary && (
+                <Button size="sm" variant="secondary" onClick={copyTicketSummary}><Copy className="mr-1 h-3 w-3" />Copy</Button>
+              )}
+            </div>
+            {ticketSummary && (
+              <div className="mb-4 rounded-lg bg-background p-3 text-xs">
+                <div className="font-medium">{ticketSummary.short_description}</div>
+                <pre className="mt-2 whitespace-pre-wrap text-muted">{ticketSummary.description}</pre>
+              </div>
+            )}
+            <div className="space-y-2 text-sm">
+              <Select value={ticketForm.external_ticket_system} onChange={(e) => setTicketForm({ ...ticketForm, external_ticket_system: e.target.value })}>
+                <option value="ServiceNow">ServiceNow</option>
+                <option value="Jira">Jira</option>
+              </Select>
+              <Input placeholder="Ticket ID" value={ticketForm.external_ticket_id} onChange={(e) => setTicketForm({ ...ticketForm, external_ticket_id: e.target.value })} />
+              <Input placeholder="Ticket URL" value={ticketForm.external_ticket_url} onChange={(e) => setTicketForm({ ...ticketForm, external_ticket_url: e.target.value })} />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={saveTicketLink}>Save Link</Button>
+                {caseData.external_ticket_url && (
+                  <a href={caseData.external_ticket_url} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="secondary"><ExternalLink className="mr-1 h-3 w-3" />Open</Button>
+                  </a>
+                )}
+              </div>
             </div>
           </Card>
 

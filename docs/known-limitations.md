@@ -1,8 +1,8 @@
 # TrustOps Known Limitations
 
-**Release:** v0.2.0-operational-pilot
+**Release:** v0.2.1-pilot-admin
 
-TrustOps v0.2.0 is a **pilot release** for SOCaaS and MDR providers. The following limitations are intentional or planned for post-pilot releases.
+TrustOps v0.2.1 is a **pilot release** for SOCaaS and MDR providers. The following limitations are intentional or planned for post-pilot releases.
 
 ## Security & Compliance
 
@@ -12,14 +12,14 @@ TrustOps v0.2.0 is a **pilot release** for SOCaaS and MDR providers. The followi
 
 ## Integrations
 
-- **No per-client integration key rotation** — single `WEBHOOK_API_KEY` (optional dedicated `SENTINEL_API_KEY`).
 - **No full Sentinel bidirectional sync** — inbound alert ingestion only; no case status write-back to Sentinel.
-- **No ServiceNow/Jira sync** — case work stays in TrustOps for pilot scope.
+- **No full ServiceNow/Jira bidirectional sync** — export summaries and manual ticket links only; no automated sync.
+- **Environment-level webhook key** — deprecated for pilot/production; use per-client integration keys.
 
 ## Evidence & Attachments
 
-- **No file evidence uploads** — text/log evidence only.
-- **No advanced evidence retention controls** — standard database retention applies.
+- **Evidence storage is local-demo unless object storage is configured** — `backend/storage/evidence/` for local demo; pilot/production should use Azure Blob, S3, or equivalent.
+- **No advanced evidence retention/legal hold** — standard database and filesystem retention applies.
 
 ## Automation Boundaries (By Design)
 
@@ -28,13 +28,14 @@ TrustOps v0.2.0 is a **pilot release** for SOCaaS and MDR providers. The followi
 
 ## Reporting & Client Portal
 
-- **Client report PDF uses browser Print / Save as PDF** — no server-side PDF generation or branding engine.
+- **Client report PDF uses browser Print / Save as PDF** — no server-side PDF generation engine.
 - **Case quality scores are internal** — not exposed to client portal users by default.
 
 ## Operations
 
 - **Seed script runs on empty database only** — upgrades use migrations, not re-seed.
 - **Mock AI when `OPENAI_API_KEY` is unset** — demos only; use live AI for production pilots.
+- **Demo reset is local-demo only** — destructive reset blocked in pilot and production modes.
 
 ## Metrics
 

@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api import admin, ai_decisions, audit, auth, cases, clients, dashboards, evidence, imports, integrations, notes, qa_reports, sla, users
+from app.api import admin, ai_decisions, audit, auth, cases, clients, dashboards, evidence, imports, integration_keys, integrations, notes, qa_reports, report_branding, sla, users
 from app.core.config import settings
 from app.db.session import get_db
 
@@ -34,6 +34,8 @@ app.include_router(notes.router)
 app.include_router(evidence.router)
 app.include_router(imports.router)
 app.include_router(integrations.router)
+app.include_router(integration_keys.router)
+app.include_router(report_branding.router)
 app.include_router(audit.router)
 app.include_router(ai_decisions.router)
 app.include_router(sla.router)

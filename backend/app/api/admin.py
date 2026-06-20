@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth.security import MANAGER_ROLES, get_current_user, require_roles
+from app.auth.security import MANAGER_ROLES, require_roles
+from app.core.config import settings
 from app.db.session import get_db
 from app.models import User
 from app.schemas import ClientResponse, SLAPolicyResponse, WebhookAlertResponse
@@ -24,6 +25,32 @@ def admin_overview(
 ):
     """Setup status for MDR multi-client onboarding."""
     return AdminService(db).get_overview(user.organization_id)
+
+
+@router.get("/summary")
+def admin_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("Platform Admin", *MANAGER_ROLES)),
+):
+    return AdminService(db).get_summary(user.organization_id)
+
+
+@router.get("/pilot-checklist")
+def pilot_checklist(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("Platform Admin", *MANAGER_ROLES)),
+):
+    return AdminService(db).get_pilot_checklist(user.organization_id)
+
+
+@router.post("/demo-reset")
+def demo_reset(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("Platform Admin")),
+):
+    result = AdminService(db).demo_reset(user.organization_id, user)
+    db.commit()
+    return result
 
 
 @router.post("/clients/{client_id}/default-sla-policies", response_model=list[SLAPolicyResponse])

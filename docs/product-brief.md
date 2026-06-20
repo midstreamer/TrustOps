@@ -27,7 +27,7 @@ MDR buyers struggle to answer:
 
 SIEMs detect. SOARs enrich. Neither owns analyst workflow, human-AI decisions, or client-safe reporting. TrustOps does.
 
-## Core Capabilities (v0.2.0-operational-pilot)
+## Core Capabilities (v0.2.1-pilot-admin)
 
 - Multi-client case lifecycle with tenant isolation
 - Three-panel analyst workspace with AI triage and decision capture
@@ -35,6 +35,10 @@ SIEMs detect. SOARs enrich. Neither owns analyst workflow, human-AI decisions, o
 - **Integration health dashboard** (Sentinel + webhook)
 - **Audit log viewer** for managers
 - **Case quality score** and flags for incomplete cases
+- **Pilot Admin Console** — clients, users, integration keys, branding, checklist
+- **Per-client integration keys** with rotation and revocation
+- **Report branding** and **controlled evidence file uploads**
+- **ServiceNow/Jira export stubs** for case handoff
 - Client workflow funnel, SOC Assistant, and Value Report v2
 - Microsoft Sentinel ingestion with deduplication
 

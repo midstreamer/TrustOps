@@ -15,10 +15,13 @@ from app.schemas import (
     CaseQualitySummary,
     CaseResponse,
     CaseUpdate,
+    ExternalTicketLinkCreate,
+    ExternalTicketSummaryResponse,
     SLAEventResponse,
 )
 from app.services.case_quality_service import CaseQualityService
 from app.services.case_service import CaseService
+from app.services.external_ticket_service import ExternalTicketService
 from app.services.sla_service import SLAService
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -57,6 +60,10 @@ def _serialize_case(case: Case, sla_service: SLAService, user: User | None = Non
         alerts=[AlertResponse.model_validate(a) for a in case.alerts],
         sla_events=[SLAEventResponse.model_validate(e) for e in case.sla_events],
         quality=quality,
+        external_ticket_system=case.external_ticket_system,
+        external_ticket_id=case.external_ticket_id,
+        external_ticket_url=case.external_ticket_url,
+        external_ticket_synced_at=case.external_ticket_synced_at,
     )
 
 
@@ -178,6 +185,45 @@ def get_case_quality(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return CaseQualitySummary(**CaseQualityService(db).score_case(case))
+
+
+@router.get("/{case_id}/external-ticket-summary", response_model=ExternalTicketSummaryResponse)
+def external_ticket_summary(
+    case_id: UUID,
+    target: str = Query("generic"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    case = CaseService(db).get_case_with_details(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return ExternalTicketService(db).summary(case, target)
+
+
+@router.post("/{case_id}/external-ticket-link", response_model=CaseResponse)
+def external_ticket_link(
+    case_id: UUID,
+    payload: ExternalTicketLinkCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if is_client_user(user):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    case = CaseService(db).get_case_with_details(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    ExternalTicketService(db).link_ticket(
+        case,
+        user,
+        external_ticket_system=payload.external_ticket_system,
+        external_ticket_id=payload.external_ticket_id,
+        external_ticket_url=payload.external_ticket_url,
+    )
+    db.commit()
+    case = CaseService(db).get_case_with_details(case_id)
+    return _serialize_case(case, SLAService(db), user)
 
 
 @router.get("/{case_id}", response_model=CaseResponse)

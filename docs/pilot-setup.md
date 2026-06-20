@@ -30,7 +30,7 @@ Creates organization and all RBAC roles.
 
 ## Step 3: Create Clients
 
-Use **Admin Setup** in the UI (`/app/admin/setup` as Platform Admin or SOC Manager), or the CLI:
+Use **Pilot Admin** (`/app/admin`) or legacy **Admin Setup** (`/app/admin/setup`) as Platform Admin or SOC Manager, or the CLI:
 
 ```bash
 python scripts/pilot_setup.py add-client \
@@ -75,16 +75,26 @@ Default policies are created per client for Critical and High severities.
 
 ## Step 6: Connect Integrations
 
+### Per-Client Integration Keys (recommended)
+
+1. Open **Pilot Admin → Integration Keys** (`/app/admin/integration-keys`)
+2. Select the managed client and create a key for **Microsoft Sentinel** or **Generic Webhook**
+3. Copy the raw key immediately — it is shown only once
+4. Configure Sentinel playbook or webhook with header `X-TrustOps-Webhook-Key: <per-client-key>`
+5. Verify integration health at `/app/integrations`
+
+In `local-demo` mode, the shared `WEBHOOK_API_KEY` in `.env` still works as a fallback.
+
 ### Microsoft Sentinel
 
-1. Set `WEBHOOK_API_KEY` in `.env`
+1. Create per-client key (above) or set `WEBHOOK_API_KEY` for local-demo only
 2. Verify: `GET /integrations/sentinel/health`
 3. Configure Sentinel playbook → `POST /integrations/sentinel/alerts`
 4. See `docs/integrations/sentinel.md`
 
 ### Generic Webhook
 
-Any SIEM/SOAR can POST to `POST /integrations/webhook/alerts` with the same API key.
+Any SIEM/SOAR can POST to `POST /integrations/webhook/alerts` with the per-client integration key.
 
 ## Step 7: Import or Generate Demo Data
 

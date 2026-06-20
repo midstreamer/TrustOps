@@ -101,9 +101,11 @@ type RecsJson = {
 export function ReportContent({
   report,
   variant = 'screen',
+  branding,
 }: {
   report: Report;
   variant?: 'screen' | 'print';
+  branding?: { provider_name?: string | null } | null;
 }) {
   const caseSummary = (report.case_summary_json || {}) as CaseSummary;
   const slaSummary = report.sla_summary_json || {};

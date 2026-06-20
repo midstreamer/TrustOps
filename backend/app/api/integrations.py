@@ -7,6 +7,7 @@ from app.auth.security import MANAGER_ROLES, require_roles
 from app.core.config import settings
 from app.db.session import get_db
 from app.models import Client, User
+from app.services.integration_key_service import IntegrationKeyService
 from app.schemas import IntegrationEventResponse, IntegrationStatusResponse, SentinelAlertPayload, WebhookAlertPayload, WebhookAlertResponse
 from app.services.integration_log_service import IntegrationLogService
 from app.services.integration_status_service import IntegrationStatusService
@@ -16,10 +17,23 @@ from app.services.webhook_service import WebhookAlertService
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
 
-def verify_webhook_key(x_trustops_webhook_key: str | None = Header(None)) -> None:
-    key = settings.sentinel_api_key or settings.webhook_api_key
-    if not x_trustops_webhook_key or x_trustops_webhook_key != key:
-        raise HTTPException(status_code=401, detail="Invalid or missing webhook API key")
+def authenticate_integration(
+    db: Session,
+    raw_key: str | None,
+    client_id,
+) -> Client:
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="client_id not found")
+
+    key_svc = IntegrationKeyService(db)
+    if raw_key and key_svc.authenticate(raw_key, client_id):
+        return client
+
+    if key_svc.verify_env_key(raw_key):
+        return client
+
+    raise HTTPException(status_code=401, detail="Invalid or missing webhook API key")
 
 
 def _log_ingestion_error(
@@ -87,12 +101,10 @@ def integration_status_detail(
 def ingest_webhook_alert(
     payload: WebhookAlertPayload,
     db: Session = Depends(get_db),
-    _: None = Depends(verify_webhook_key),
+    x_trustops_webhook_key: str | None = Header(None),
 ):
     """Ingest an external alert via webhook. Requires X-TrustOps-Webhook-Key header."""
-    client = db.query(Client).filter(Client.id == payload.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="client_id not found")
+    client = authenticate_integration(db, x_trustops_webhook_key, payload.client_id)
 
     try:
         result = WebhookAlertService(db).ingest(
@@ -145,12 +157,10 @@ def sentinel_health():
 def ingest_sentinel_alert(
     payload: SentinelAlertPayload,
     db: Session = Depends(get_db),
-    _: None = Depends(verify_webhook_key),
+    x_trustops_webhook_key: str | None = Header(None),
 ):
     """Ingest a Microsoft Sentinel alert. Requires X-TrustOps-Webhook-Key header."""
-    client = db.query(Client).filter(Client.id == payload.client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="client_id not found")
+    client = authenticate_integration(db, x_trustops_webhook_key, payload.client_id)
 
     try:
         result = SentinelAlertService(db).ingest(payload.model_dump(exclude_none=True))
