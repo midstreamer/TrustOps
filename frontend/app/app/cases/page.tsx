@@ -30,12 +30,16 @@ export default function CasesPage() {
     const slaAtRisk = searchParams.get('sla_at_risk') === 'true';
     const slaBreached = searchParams.get('sla_breached') === 'true';
     const lowQuality = searchParams.get('low_quality') === 'true';
-    if (slaAtRisk || slaBreached || lowQuality) {
+    const priority = searchParams.get('priority') || '';
+    const status = searchParams.get('status') || '';
+    if (slaAtRisk || slaBreached || lowQuality || priority || status) {
       setFilters((prev) => ({
         ...prev,
         sla_at_risk: slaAtRisk,
         sla_breached: slaBreached,
         low_quality: lowQuality,
+        priority,
+        status,
       }));
     }
   }, [searchParams]);

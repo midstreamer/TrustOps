@@ -78,6 +78,7 @@ class ClientChatService:
         reply = self.provider.complete_chat(system_prompt, messages, mock_context=context)
         return {
             "reply": reply,
+            "source": "openai" if self.provider.is_live else "mock",
             "client_id": str(client_id),
             "period_days": period_days,
         }

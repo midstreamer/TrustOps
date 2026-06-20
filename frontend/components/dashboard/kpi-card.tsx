@@ -42,13 +42,22 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        'relative overflow-hidden',
+        'relative overflow-hidden transition-colors',
         toneStyles[tone],
-        onClick && 'cursor-pointer transition-colors hover:border-primary/50',
+        onClick && 'cursor-pointer hover:border-primary/50 hover:shadow-sm',
       )}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
     >
+      {tone !== 'default' && (
+        <div className={cn(
+          'absolute inset-x-0 top-0 h-0.5',
+          tone === 'primary' && 'bg-primary/60',
+          tone === 'success' && 'bg-green-500/60',
+          tone === 'warning' && 'bg-yellow-500/60',
+          tone === 'danger' && 'bg-red-500/60',
+        )} />
+      )}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>
@@ -63,11 +72,26 @@ export function KpiCard({
   );
 }
 
-export function SectionHeader({ title, description }: { title: string; description?: string }) {
+export function SectionHeader({
+  title,
+  description,
+  icon: Icon,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
   return (
-    <div className="mb-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
-      {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+    <div className="mb-4 flex items-center gap-2.5 border-b border-border/60 pb-3">
+      {Icon && (
+        <div className="shrink-0 rounded-lg bg-primary/10 p-1.5 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+      )}
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+      </div>
     </div>
   );
 }

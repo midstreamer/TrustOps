@@ -361,9 +361,12 @@ export interface ExternalTicketSummary {
   short_description: string;
   description: string;
   priority: string;
-  category: string;
-  subcategory: string;
-  assignment_group: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  assignment_group?: string | null;
+  issue_type?: string | null;
+  project_key?: string | null;
+  labels?: string[] | null;
   external_reference: string;
 }
 

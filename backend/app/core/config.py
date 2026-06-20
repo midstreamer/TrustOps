@@ -1,7 +1,21 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = _BACKEND_ROOT.parent
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(_BACKEND_ROOT / ".env"),
+            str(_PROJECT_ROOT / ".env"),
+        ),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     database_url: str = "postgresql://trustops:trustops@localhost:5432/trustops"
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
@@ -16,10 +30,6 @@ class Settings(BaseSettings):
     deployment_mode: str = "local-demo"
     max_evidence_file_mb: int = 10
     evidence_storage_path: str = "storage/evidence"
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

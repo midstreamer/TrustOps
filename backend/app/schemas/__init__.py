@@ -411,6 +411,36 @@ class ClientChatResponse(BaseModel):
     reply: str
     client_id: UUID
     period_days: int
+    source: str = "mock"
+
+
+class ManagerChatRequest(BaseModel):
+    message: str
+    history: list[ClientChatMessage] = []
+
+
+class ManagerChatResponse(BaseModel):
+    reply: str
+    source: str = "mock"
+
+
+class TrustMetricsChatRequest(BaseModel):
+    message: str
+    history: list[ClientChatMessage] = []
+    client_id: UUID | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+
+
+class TrustMetricsChatResponse(BaseModel):
+    reply: str
+    source: str = "mock"
+
+
+class AIAssistantStatusResponse(BaseModel):
+    enabled: bool
+    provider: str
+    model: str | None = None
 
 
 class ImportPreviewResponse(BaseModel):

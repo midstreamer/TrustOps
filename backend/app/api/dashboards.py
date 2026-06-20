@@ -16,11 +16,35 @@ from app.auth.security import (
 )
 from app.db.session import get_db
 from app.models import Client, User
-from app.schemas import ClientChatRequest, ClientChatResponse, TrustMetricsDrilldownResponse
+from app.schemas import (
+    AIAssistantStatusResponse,
+    ClientChatRequest,
+    ClientChatResponse,
+    ManagerChatRequest,
+    ManagerChatResponse,
+    TrustMetricsChatRequest,
+    TrustMetricsChatResponse,
+    TrustMetricsDrilldownResponse,
+)
+from app.ai.provider import AIProvider
 from app.services.client_chat_service import ClientChatService
 from app.services.dashboard_service import DashboardService
+from app.services.manager_chat_service import ManagerChatService
+from app.services.trust_metrics_chat_service import TrustMetricsChatService
 
 router = APIRouter(prefix="/dashboards", tags=["dashboards"])
+
+
+@router.get("/ai-status", response_model=AIAssistantStatusResponse)
+def ai_assistant_status(
+    user: User = Depends(get_current_user),
+):
+    provider = AIProvider()
+    return AIAssistantStatusResponse(
+        enabled=provider.is_live,
+        provider="openai" if provider.is_live else "mock",
+        model=provider.model if provider.is_live else None,
+    )
 
 
 @router.get("/soc-manager")
@@ -70,11 +94,69 @@ def client_soc_chat(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     return ClientChatResponse(
         reply=result["reply"],
         client_id=client_id,
         period_days=result["period_days"],
+        source=result["source"],
     )
+
+
+@router.post("/soc-manager/chat", response_model=ManagerChatResponse)
+def soc_manager_chat(
+    payload: ManagerChatRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
+):
+    if not payload.message.strip():
+        raise HTTPException(status_code=400, detail="Message is required")
+    try:
+        result = ManagerChatService(db).ask(
+            user.organization_id,
+            payload.message,
+            history=[m.model_dump() for m in payload.history],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return ManagerChatResponse(reply=result["reply"], source=result["source"])
+
+
+@router.post("/trust-metrics/chat", response_model=TrustMetricsChatResponse)
+def trust_metrics_chat(
+    payload: TrustMetricsChatRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*MANAGER_ROLES, "Platform Admin")),
+):
+    if not payload.message.strip():
+        raise HTTPException(status_code=400, detail="Message is required")
+    if payload.client_id:
+        client = (
+            db.query(Client)
+            .filter(Client.id == payload.client_id, Client.organization_id == user.organization_id)
+            .first()
+        )
+        if not client:
+            raise HTTPException(status_code=404, detail="client_id not found")
+    if payload.start_date and payload.end_date and payload.start_date > payload.end_date:
+        raise HTTPException(status_code=400, detail="start_date must be on or before end_date")
+    try:
+        result = TrustMetricsChatService(db).ask(
+            user.organization_id,
+            payload.message,
+            history=[m.model_dump() for m in payload.history],
+            client_id=payload.client_id,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return TrustMetricsChatResponse(reply=result["reply"], source=result["source"])
 
 
 @router.get("/executive")
